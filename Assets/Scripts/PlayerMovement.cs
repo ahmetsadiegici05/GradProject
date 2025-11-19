@@ -77,7 +77,7 @@ public class PlayerMovement : MonoBehaviour
             float direction = -Mathf.Sign(transform.localScale.x);
             body.linearVelocity = new Vector2(direction * 6f, jumpPower);
 
-            // yüzü zıpladığı yöne döndür
+            
             transform.localScale = new Vector3(direction, 1, 1);
 
             wallJumpCooldown = 0;
@@ -113,6 +113,6 @@ public class PlayerMovement : MonoBehaviour
     // SHOOTING CONDITION — saldırabilir mi?
     public bool canAttack()
     {
-        return horizontalInput == 0 && isGrounded() && !onWall();
+        return isGrounded() && !onWall();
     }
 }
