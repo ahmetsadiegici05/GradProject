@@ -3,6 +3,7 @@ using UnityEngine;
 public class Projectile : MonoBehaviour
 {
     [SerializeField] private float speed;
+    [SerializeField] private float damage = 1f;
     private float direction;
     private bool hit;
     private float lifetime;
@@ -26,6 +27,13 @@ public class Projectile : MonoBehaviour
     }
     private void OnTriggerEnter2D(Collider2D collision)
     {
+        if (hit)
+            return;
+
+        EnemyHealth enemyHealth = collision.GetComponent<EnemyHealth>();
+        if (enemyHealth != null)
+            enemyHealth.TakeDamage(damage);
+
         hit = true;
         boxCollider.enabled = false;
         anim.SetTrigger("explode");
