@@ -113,6 +113,7 @@ public class PlayerMovement : MonoBehaviour
     // SHOOTING CONDITION — saldırabilir mi?
     public bool canAttack()
     {
-        return isGrounded() && !onWall();
+        // Duvar tutuşu dahil her durumda saldırabilir
+        return true;
     }
 }
