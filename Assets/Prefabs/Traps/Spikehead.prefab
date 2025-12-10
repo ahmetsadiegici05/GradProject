@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 5440093074149315222}
   - component: {fileID: 7352075606634262681}
   - component: {fileID: 2039474369813783839}
+  - component: {fileID: 1055299671328734541}
   m_Layer: 0
   m_Name: Spikehead
   m_TagString: Untagged
@@ -127,7 +128,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.052452564, y: -0.07867718}
+  m_Offset: {x: 0.22163486, y: 0.075128555}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -137,7 +138,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 10.135095, y: 9.348322}
+  m_Size: {x: 6.905162, y: 7.2565546}
   m_EdgeRadius: 0
 --- !u!50 &7352075606634262681
 Rigidbody2D:
@@ -179,9 +180,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Spikehead
   damage: 1
-  speed: 0.5
+  speed: 3
   range: 10
-  checkDelay: 1
+  checkDelay: 0.5
   playerLayer:
     serializedVersion: 2
     m_Bits: 256
+--- !u!114 &1055299671328734541
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7152509506272909191}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9cf7fe126e7e89b48941d25ef281d704, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyHealth
+  maxHealth: 2
+  deathEffect: {fileID: 0}

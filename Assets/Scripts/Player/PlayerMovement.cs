@@ -12,30 +12,36 @@ public class PlayerMovement : MonoBehaviour
     private BoxCollider2D boxCollider;
     private float wallJumpCooldown;
     private float horizontalInput;
+    private float rawHorizontalInput;
+    private Vector3 defaultWorldScale;
 
     private void Awake()
     {
         body = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         boxCollider = GetComponent<BoxCollider2D>();
+        defaultWorldScale = transform.lossyScale;
     }
 
     private void Update()
     {
         horizontalInput = Input.GetAxis("Horizontal");
+        rawHorizontalInput = Input.GetAxisRaw("Horizontal");
 
         // Flip
-        if (horizontalInput > 0.01f)
-            transform.localScale = Vector3.one;
-        else if (horizontalInput < -0.01f)
-            transform.localScale = new Vector3(-1, 1, 1);
+        if (rawHorizontalInput > 0.01f)
+            ApplyFacingScale(1f);
+        else if (rawHorizontalInput < -0.01f)
+            ApplyFacingScale(-1f);
+
+        bool grounded = isGrounded();
+        bool onMovingPlatform = IsOnMovingPlatform();
+        bool touchingWall = onWall();
 
         // Animator parameters
-        anim.SetBool("Run", horizontalInput != 0);
-        anim.SetBool("grounded", isGrounded());
-
-        bool touchingWall = onWall();
-        bool grounded = isGrounded();
+        bool groundedForAnim = grounded || onMovingPlatform;
+        anim.SetBool("Run", Mathf.Abs(rawHorizontalInput) > 0.01f && groundedForAnim);
+        anim.SetBool("grounded", groundedForAnim);
 
         if (wallJumpCooldown > 0.2f)
         {
@@ -57,7 +63,7 @@ public class PlayerMovement : MonoBehaviour
 
             // Jump
             if (Input.GetKeyDown(KeyCode.Space))
-                Jump(touchingWall, grounded);
+                Jump(touchingWall, grounded || onMovingPlatform);
         }
         else
         {
@@ -78,10 +84,27 @@ public class PlayerMovement : MonoBehaviour
             body.linearVelocity = new Vector2(direction * 6f, jumpPower);
 
             
-            transform.localScale = new Vector3(direction, 1, 1);
+            ApplyFacingScale(direction);
 
             wallJumpCooldown = 0;
         }
+    }
+
+    private void ApplyFacingScale(float direction)
+    {
+        Vector3 parentScale = transform.parent ? transform.parent.lossyScale : Vector3.one;
+
+        float safeX = Mathf.Abs(parentScale.x) < 0.0001f ? 1f : parentScale.x;
+        float safeY = Mathf.Abs(parentScale.y) < 0.0001f ? 1f : parentScale.y;
+        float safeZ = Mathf.Abs(parentScale.z) < 0.0001f ? 1f : parentScale.z;
+
+        float targetX = Mathf.Abs(defaultWorldScale.x) * Mathf.Sign(direction == 0 ? 1f : direction);
+
+        transform.localScale = new Vector3(
+            targetX / safeX,
+            defaultWorldScale.y / safeY,
+            defaultWorldScale.z / safeZ
+        );
     }
 
     private bool isGrounded()
@@ -108,6 +131,14 @@ public class PlayerMovement : MonoBehaviour
             wallLayer
         );
         return hit.collider != null;
+    }
+
+    private bool IsOnMovingPlatform()
+    {
+        if (transform.parent == null)
+            return false;
+
+        return transform.parent.GetComponent<MovingPlatform>() != null;
     }
 
     // SHOOTING CONDITION — saldırabilir mi?

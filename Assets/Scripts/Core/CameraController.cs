@@ -45,7 +45,9 @@ public class CameraController : MonoBehaviour
         else
         {
             // Follow player modu (daha hızlı ve smooth)
-            lookAhead = Mathf.Lerp(lookAhead, lookAheadDistance * player.localScale.x, Time.deltaTime * followSpeed);
+            float facing = Mathf.Sign(player.lossyScale.x);
+            if (Mathf.Approximately(facing, 0f)) facing = 1f;
+            lookAhead = Mathf.Lerp(lookAhead, lookAheadDistance * facing, Time.deltaTime * followSpeed);
             
             Vector3 targetPos = new Vector3(
                 player.position.x + lookAhead, 
