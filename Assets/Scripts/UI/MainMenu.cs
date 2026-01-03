@@ -6,6 +6,8 @@ public class MainMenu : MonoBehaviour
 {
 	public void PlayGame()
 	{
+        // Yeni oyuna başlarken checkpoint verisini sıfırla
+        CheckpointData.ResetData();
 		SceneManager.LoadScene("Level1");
 	}
 
