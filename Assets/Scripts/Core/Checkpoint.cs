@@ -3,6 +3,7 @@ using UnityEngine;
 public class Checkpoint : MonoBehaviour
 {
     [SerializeField] private Color activeColor = Color.green;
+    [SerializeField] private bool unlockSpikeheadShooting;
     private bool activated;
     private SpriteRenderer spriteRenderer;
 
@@ -20,6 +21,9 @@ public class Checkpoint : MonoBehaviour
             // Pozisyonu kaydet
             CheckpointData.LastCheckpointPosition = transform.position;
             CheckpointData.HasCheckpoint = true;
+
+            if (unlockSpikeheadShooting)
+                CheckpointData.SpikeheadShootingUnlocked = true;
             
             // Görsel geri bildirim (Rengi değiştir)
             if (spriteRenderer != null)
