@@ -6,6 +6,11 @@ public class CameraController : MonoBehaviour
     [SerializeField] private Transform player;
     [SerializeField] private float followSpeed = 2f;
     [SerializeField] private float lookAheadDistance = 2f;
+
+    [Header("Zoom")]
+    [SerializeField] private bool overrideOrthographicSize = true;
+    [SerializeField] private float targetOrthographicSize = 7f;
+    [SerializeField] private float zoomSmoothTime = 0.1f;
     
     [Header("Room Camera (Optional)")]
     [SerializeField] private bool useRoomCamera = false;
@@ -15,8 +20,13 @@ public class CameraController : MonoBehaviour
     private float lookAhead;
     private Vector3 velocity = Vector3.zero;
 
+    private Camera cam;
+    private float zoomVelocity;
+
     private void Awake()
     {
+        cam = GetComponent<Camera>();
+
         if (player == null)
         {
             // Otomatik olarak "Player" tag'li objeyi bul
@@ -31,6 +41,8 @@ public class CameraController : MonoBehaviour
     private void LateUpdate()
     {
         if (player == null) return;
+
+        ApplyZoom();
 
         if (useRoomCamera)
         {
@@ -57,6 +69,30 @@ public class CameraController : MonoBehaviour
             
             transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * followSpeed);
         }
+    }
+
+    private void ApplyZoom()
+    {
+        if (!overrideOrthographicSize || cam == null) return;
+        if (!cam.orthographic) return;
+
+        if (zoomSmoothTime <= 0f)
+        {
+            cam.orthographicSize = targetOrthographicSize;
+            return;
+        }
+
+        cam.orthographicSize = Mathf.SmoothDamp(
+            cam.orthographicSize,
+            targetOrthographicSize,
+            ref zoomVelocity,
+            zoomSmoothTime
+        );
+    }
+
+    public void SetZoom(float orthographicSize)
+    {
+        targetOrthographicSize = orthographicSize;
     }
 
     public void MoveToNewRoom(Transform _newRoom)
