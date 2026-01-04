@@ -18,7 +18,9 @@ public class PlayerAttack : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetMouseButton(0) && cooldownTimer > attackCooldown && playerMovement.canAttack())
+        bool isAttackHeld = Input.GetButton("Fire1") || Input.GetKey(KeyCode.RightControl);
+
+        if (isAttackHeld && cooldownTimer > attackCooldown && playerMovement.canAttack())
             Attack();
 
         cooldownTimer += Time.deltaTime;
