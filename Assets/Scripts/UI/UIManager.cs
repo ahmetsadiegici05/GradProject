@@ -1,10 +1,14 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using TMPro;
 
 public class UIManager : MonoBehaviour
 {
     [Header("Game Over")]
     [SerializeField] private GameObject gameOverScreen;
+    [SerializeField] private TextMeshProUGUI distanceText;
+    [SerializeField] private TextMeshProUGUI enemiesKilledText;
+    [SerializeField] private TextMeshProUGUI scoreText;
 
     [Header("Pause")]
     [SerializeField] private GameObject pauseScreen;
@@ -34,6 +38,13 @@ public class UIManager : MonoBehaviour
 
     public void GameOver()
     {
+        // Skor takibini durdur ve istatistikleri göster
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.StopTracking();
+            UpdateGameOverStats();
+        }
+
         if (gameOverScreen != null)
             gameOverScreen.SetActive(true);
 
@@ -42,6 +53,21 @@ public class UIManager : MonoBehaviour
 
         // Oyun dursun; UI butonları çalışmaya devam eder.
         Time.timeScale = 0f;
+    }
+
+    private void UpdateGameOverStats()
+    {
+        if (ScoreManager.Instance == null)
+            return;
+
+        if (distanceText != null)
+            distanceText.text = $"Distance: {ScoreManager.Instance.DistanceTraveled:F1} m";
+
+        if (enemiesKilledText != null)
+            enemiesKilledText.text = $"Enemies Killed: {ScoreManager.Instance.EnemiesKilled}";
+
+        if (scoreText != null)
+            scoreText.text = $"Score: {ScoreManager.Instance.TotalScore}";
     }
 
     public void TogglePause()
