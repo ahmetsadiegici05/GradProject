@@ -192,8 +192,12 @@ MonoBehaviour:
   - {fileID: 5161445597423748345, guid: 24794bf2566edb848a8bc4dd7fd42053, type: 3}
   - {fileID: 5161445597423748345, guid: 24794bf2566edb848a8bc4dd7fd42053, type: 3}
   - {fileID: 5161445597423748345, guid: 24794bf2566edb848a8bc4dd7fd42053, type: 3}
+  projectilePrefab: {fileID: 0}
+  poolSize: 3
+  projectileParent: {fileID: 0}
   fireballCooldown: 3
   shootingRange: 8
+  requireShootingUnlock: 1
 --- !u!114 &1055299671328734541
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -208,6 +212,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyHealth
   maxHealth: 2
   deathEffect: {fileID: 0}
+  useFadeOut: 1
+  fadeOutDuration: 0.2
 --- !u!1 &7932126374757465909
 GameObject:
   m_ObjectHideFlags: 0
