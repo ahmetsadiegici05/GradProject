@@ -11,6 +11,11 @@ public class EnemyHealth : MonoBehaviour
     [SerializeField] private bool useFadeOut = false;
     [SerializeField] private float fadeOutDuration = 1f;
     
+    [Header("Float Up Death")]
+    [SerializeField] private bool useFloatUp = false;
+    [SerializeField] private float floatUpSpeed = 3f;
+    [SerializeField] private float floatUpDuration = 1f;
+    
     private float currentHealth;
     private bool dead;
     private SpriteRenderer spriteRenderer;
@@ -74,7 +79,16 @@ public class EnemyHealth : MonoBehaviour
         if (deathEffect != null)
             Instantiate(deathEffect, transform.position, Quaternion.identity);
 
-        if (useFadeOut && spriteRenderer != null)
+        // Collider'ı kapat
+        Collider2D col = GetComponent<Collider2D>();
+        if (col != null)
+            col.enabled = false;
+
+        if (useFloatUp && spriteRenderer != null)
+        {
+            StartCoroutine(FloatUpAndDestroy());
+        }
+        else if (useFadeOut && spriteRenderer != null)
         {
             StartCoroutine(FadeOutAndDestroy());
         }
@@ -82,6 +96,36 @@ public class EnemyHealth : MonoBehaviour
         {
             gameObject.SetActive(false);
         }
+    }
+
+    private IEnumerator FloatUpAndDestroy()
+    {
+        // Rigidbody varsa durdur
+        Rigidbody2D rb = GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.bodyType = RigidbodyType2D.Kinematic;
+        }
+
+        float elapsed = 0f;
+        Color startColor = spriteRenderer.color;
+
+        while (elapsed < floatUpDuration)
+        {
+            elapsed += Time.deltaTime;
+            
+            // Yukarı doğru hareket
+            transform.position += Vector3.up * floatUpSpeed * Time.deltaTime;
+            
+            // Aynı zamanda fade out
+            float alpha = Mathf.Lerp(1f, 0f, elapsed / floatUpDuration);
+            spriteRenderer.color = new Color(startColor.r, startColor.g, startColor.b, alpha);
+            
+            yield return null;
+        }
+
+        gameObject.SetActive(false);
     }
 
     private IEnumerator FadeOutAndDestroy()

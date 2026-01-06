@@ -10,6 +10,11 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI enemiesKilledText;
     [SerializeField] private TextMeshProUGUI scoreText;
 
+    [Header("Leaderboard Save")]
+    [SerializeField] private TMP_InputField playerNameInput;
+    [SerializeField] private GameObject saveScoreButton;
+    [SerializeField] private TextMeshProUGUI savedMessageText;
+
     [Header("Pause")]
     [SerializeField] private GameObject pauseScreen;
 
@@ -68,6 +73,62 @@ public class UIManager : MonoBehaviour
 
         if (scoreText != null)
             scoreText.text = $"Score: {ScoreManager.Instance.TotalScore}";
+
+        // Kaydetme UI'ını sıfırla
+        if (saveScoreButton != null)
+            saveScoreButton.SetActive(true);
+
+        if (savedMessageText != null)
+            savedMessageText.gameObject.SetActive(false);
+
+        if (playerNameInput != null)
+        {
+            playerNameInput.text = "";
+            playerNameInput.interactable = true;
+        }
+    }
+
+    public void SaveScoreToLeaderboard()
+    {
+        if (ScoreManager.Instance == null)
+        {
+            Debug.LogError("ScoreManager bulunamadı!");
+            return;
+        }
+
+        string playerName = "Player";
+        if (playerNameInput != null && !string.IsNullOrEmpty(playerNameInput.text))
+        {
+            playerName = playerNameInput.text;
+            Debug.Log($"İsim girildi: {playerName}");
+        }
+        else
+        {
+            Debug.LogWarning("PlayerNameInput bağlı değil veya boş!");
+        }
+
+        ScoreManager.Instance.SaveToLeaderboard(playerName);
+        Debug.Log($"Skor kaydedildi: {playerName} - {ScoreManager.Instance.TotalScore}");
+
+        // UI'ı güncelle
+        if (saveScoreButton != null)
+            saveScoreButton.SetActive(false);
+        else
+            Debug.LogWarning("SaveScoreButton bağlı değil!");
+
+        if (playerNameInput != null)
+            playerNameInput.interactable = false;
+
+        if (savedMessageText != null)
+        {
+            savedMessageText.text = "Score Saved!";
+            savedMessageText.gameObject.SetActive(true);
+            Debug.Log("Score Saved mesajı gösterildi");
+        }
+        else
+        {
+            Debug.LogWarning("SavedMessageText bağlı değil!");
+        }
     }
 
     public void TogglePause()
@@ -106,6 +167,25 @@ public class UIManager : MonoBehaviour
         Time.timeScale = 1f;
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
+    }
+
+    // En son checkpoint'ten devam et
+    public void ContinueFromCheckpoint()
+    {
+        isPaused = false;
+        Time.timeScale = 1f;
+        // Checkpoint verisi korunuyor, sadece sahneyi yeniden yükle
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    // En baştan başla (checkpoint'i sıfırla)
+    public void RestartFromBeginning()
+    {
+        isPaused = false;
+        Time.timeScale = 1f;
+        // Checkpoint verisini sıfırla
+        CheckpointData.ResetData();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     public void Restart()

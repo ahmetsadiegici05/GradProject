@@ -88,6 +88,12 @@ public class ScoreManager : MonoBehaviour
         }
     }
 
+    public void SaveToLeaderboard(string playerName)
+    {
+        int currentScore = CalculateScore();
+        LeaderboardData.AddScore(playerName, currentScore);
+    }
+
     public void ResetStats()
     {
         distanceTraveled = 0;

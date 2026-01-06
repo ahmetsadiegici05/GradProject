@@ -185,11 +185,14 @@ public class RushingTrap : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        // Sadece rush sırasında hasar ver
-        if (currentState != TrapState.Rushing)
+        if (((1 << collision.gameObject.layer) & playerLayer) == 0)
             return;
 
-        if (((1 << collision.gameObject.layer) & playerLayer) != 0)
+        // Her zaman hasar ver
+        DamagePlayer(collision);
+
+        // Rush sırasında ek olarak it ve geri dön
+        if (currentState == TrapState.Rushing)
         {
             PushPlayer(collision);
             StartReturning();
@@ -198,18 +201,32 @@ public class RushingTrap : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (currentState != TrapState.Rushing)
-            return;
-
         // Duvara çarptıysa geri dön
         if (((1 << collision.gameObject.layer) & playerLayer) == 0)
         {
-            StartReturning();
+            if (currentState == TrapState.Rushing)
+                StartReturning();
             return;
         }
 
-        PushPlayer(collision.collider);
-        StartReturning();
+        // Her zaman hasar ver
+        DamagePlayer(collision.collider);
+
+        // Rush sırasında ek olarak it ve geri dön
+        if (currentState == TrapState.Rushing)
+        {
+            PushPlayer(collision.collider);
+            StartReturning();
+        }
+    }
+
+    private void DamagePlayer(Collider2D playerCollider)
+    {
+        Health playerHealth = playerCollider.GetComponent<Health>();
+        if (playerHealth != null)
+        {
+            playerHealth.TakeDamage(damage);
+        }
     }
 
     private void PushPlayer(Collider2D playerCollider)
@@ -222,13 +239,6 @@ public class RushingTrap : MonoBehaviour
             Vector2 pushDirection = rushDirection + Vector2.up * upwardPushForce;
             playerRb.linearVelocity = Vector2.zero; // Mevcut hızı sıfırla
             playerRb.AddForce(pushDirection.normalized * pushForce, ForceMode2D.Impulse);
-        }
-
-        // Hasar ver (opsiyonel)
-        Health playerHealth = playerCollider.GetComponent<Health>();
-        if (playerHealth != null)
-        {
-            playerHealth.TakeDamage(damage);
         }
     }
 
