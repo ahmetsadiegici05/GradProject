@@ -40,6 +40,10 @@ public class Projectile : MonoBehaviour
         if (collision.GetComponent<Door>() != null)
             return;
 
+        // Can collectible'lerinden geç, yok olma
+        if (collision.GetComponent<HealthCollectible>() != null)
+            return;
+
         // Ekran dışındaysa hasar verme
         if (!IsVisibleOnScreen())
             return;

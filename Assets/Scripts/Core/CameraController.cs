@@ -23,9 +23,17 @@ public class CameraController : MonoBehaviour
     private Camera cam;
     private float zoomVelocity;
 
+    // Shake logic - Perlin noise for smoothness
+    private Vector3 internalPosition; // Position WITHOUT shake
+    private float shakeTimer = 0f;
+    private float shakeDuration = 0f;
+    private float shakeIntensity = 0f;
+    private float shakeNoiseOffset;
+
     private void Awake()
     {
         cam = GetComponent<Camera>();
+        internalPosition = transform.position;
 
         if (player == null)
         {
@@ -42,6 +50,17 @@ public class CameraController : MonoBehaviour
     {
         if (player == null) return;
 
+        // Apply shake timer with decay
+        if (shakeTimer > 0)
+        {
+            shakeTimer -= Time.unscaledDeltaTime;
+            if (shakeTimer <= 0)
+            {
+                shakeIntensity = 0f;
+                shakeDuration = 0f;
+            }
+        }
+
         ApplyZoom();
 
         // Yerçekimine göre yön vektörleri
@@ -52,12 +71,15 @@ public class CameraController : MonoBehaviour
         Vector2 rightDir = new Vector2(-gravityDir.y, gravityDir.x);
         Vector2 upDir = -gravityDir;
 
+        // Calculate TARGET position for logic (internalPosition logic)
+        Vector3 nextInternalPos = internalPosition;
+
         if (useRoomCamera)
         {
             // Room camera modu - yerçekimine göre oda pozisyonuna git
-            Vector3 targetPos = new Vector3(currentRoomPos.x, currentRoomPos.y, transform.position.z);
-            transform.position = Vector3.SmoothDamp(
-                transform.position, 
+            Vector3 targetPos = new Vector3(currentRoomPos.x, currentRoomPos.y, internalPosition.z);
+            nextInternalPos = Vector3.SmoothDamp(
+                internalPosition, 
                 targetPos, 
                 ref velocity, 
                 roomTransitionSpeed
@@ -76,11 +98,40 @@ public class CameraController : MonoBehaviour
             Vector3 targetPos = new Vector3(
                 player.position.x + lookAheadOffset.x, 
                 player.position.y + lookAheadOffset.y, 
-                transform.position.z
+                internalPosition.z
             );
             
-            transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * followSpeed);
+            nextInternalPos = Vector3.Lerp(internalPosition, targetPos, Time.deltaTime * followSpeed);
         }
+
+        // Keep internal position updated
+        internalPosition = nextInternalPos;
+
+        // Apply Shake Offset with smooth Perlin noise
+        Vector3 shakeOffset = Vector3.zero;
+        if (shakeIntensity > 0f && shakeDuration > 0f)
+        {
+            // Decay multiplier (shake azalarak biter)
+            float decay = shakeTimer / shakeDuration;
+            float currentIntensity = shakeIntensity * decay;
+            
+            // Perlin noise for smoothness (time-based)
+            float noiseTime = Time.unscaledTime * 25f + shakeNoiseOffset;
+            float x = (Mathf.PerlinNoise(noiseTime, 0f) - 0.5f) * 2f * currentIntensity;
+            float y = (Mathf.PerlinNoise(0f, noiseTime) - 0.5f) * 2f * currentIntensity;
+            shakeOffset = new Vector3(x, y, 0);
+        }
+
+        // Final Transform Apply
+        transform.position = internalPosition + shakeOffset;
+    }
+
+    public void TriggerShake(float intensity, float duration)
+    {
+        shakeIntensity = intensity;
+        shakeDuration = duration;
+        shakeTimer = duration;
+        shakeNoiseOffset = Random.Range(0f, 100f); // Her shake farklı pattern
     }
 
     private void ApplyZoom()

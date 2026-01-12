@@ -52,6 +52,9 @@ public class Door : MonoBehaviour
 
             cam.MoveToNewRoom(nextRoom);
 
+            if (WorldRotationManager.Instance != null)
+                WorldRotationManager.Instance.TriggerRoomTransitionShake();
+
             if (triggerRotation && !hasTriggeredRotation && ProgressionManager.Instance != null)
             {
                 ProgressionManager.Instance.AdvanceStage();
@@ -70,6 +73,9 @@ public class Door : MonoBehaviour
             }
 
             cam.MoveToNewRoom(previousRoom);
+
+            if (WorldRotationManager.Instance != null)
+                WorldRotationManager.Instance.TriggerRoomTransitionShake();
 
             if (debugLogs)
                 Debug.Log($"Door '{name}': PREVIOUS room -> {previousRoom.name}");

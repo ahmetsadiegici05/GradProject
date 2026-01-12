@@ -20,7 +20,7 @@ public class WorldRotationManager : MonoBehaviour
     [SerializeField] private AnimationCurve rotationCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
     [Header("What Rotates?")]
-    [SerializeField] private bool rotateCamera = true;
+    [SerializeField] private bool rotateCamera = false;  // FALSE: Kamera dönmez, drift olmaz
     [SerializeField] private bool rotateWorld = false;
     [SerializeField] private bool rotateGravity = true;
 
@@ -28,6 +28,12 @@ public class WorldRotationManager : MonoBehaviour
     [SerializeField] private bool useScreenShake = true;
     [SerializeField] private float shakeIntensity = 0.05f;
     [SerializeField] private float shakeDuration = 0.1f;
+    [SerializeField] private float minDegreesForShake = 5f;
+
+    [Header("Transition Shake")]
+    [SerializeField] private bool shakeOnRoomTransition = true;
+    [SerializeField] private float transitionShakeIntensity = 0.03f;
+    [SerializeField] private float transitionShakeDuration = 0.18f;
 
     [Header("Debug")]
     [SerializeField] private bool debugMode = true;
@@ -35,6 +41,8 @@ public class WorldRotationManager : MonoBehaviour
     // Current rotation state
     private float currentRotationAngle = 0f;
     private bool isRotating = false;
+
+    private Coroutine shakeCoroutine;
 
     public bool IsRotating => isRotating;
     public float CurrentAngle => currentRotationAngle;
@@ -65,6 +73,10 @@ public class WorldRotationManager : MonoBehaviour
                 sceneMag = 9.81f;
             gravityMagnitude = sceneMag;
         }
+
+        // FİZİK HATA DÜZELTME: Karakter düşmelerini önlemek için iterasyonları artır
+        Physics2D.velocityIterations = 8;
+        Physics2D.positionIterations = 8;
 
         // Checkpoint yoksa gravity'yi sıfırla (yeni oyun veya restart)
         if (!CheckpointData.HasCheckpoint)
@@ -156,9 +168,12 @@ public class WorldRotationManager : MonoBehaviour
             Physics2D.gravity = gravityEnd;
         currentRotationAngle = (currentRotationAngle + deltaDegrees) % 360f;
 
-        // Screen shake efekti
-        if (useScreenShake && cameraRoot != null)
-            StartCoroutine(ScreenShakeRoutine());
+        // Rotasyon sonrası oyuncuyu platformdan çıkar (gömülme düzeltmesi)
+        DepenetratePlayer();
+
+        // Screen shake efekti (küçük açılarda kapalı)
+        if (useScreenShake && cameraRoot != null && Mathf.Abs(deltaDegrees) >= minDegreesForShake)
+            TriggerShakeFromCore(shakeIntensity, shakeDuration);
 
         isRotating = false;
 
@@ -166,23 +181,66 @@ public class WorldRotationManager : MonoBehaviour
             Debug.Log($"World rotated by {deltaDegrees}°. Current angle: {currentRotationAngle}°, Gravity: {Physics2D.gravity}");
     }
 
-    private IEnumerator ScreenShakeRoutine()
+    public void TriggerRoomTransitionShake()
     {
-        Vector3 originalPos = cameraRoot.localPosition;
+        if (!useScreenShake || !shakeOnRoomTransition || cameraRoot == null)
+            return;
+
+        TriggerShakeFromCore(transitionShakeIntensity, transitionShakeDuration);
+    }
+
+    private void TriggerShakeFromCore(float intensity, float duration)
+    {
+        // Öncelikli olarak CameraController üzerinden shake yap (stabilite için)
+        var camController = cameraRoot.GetComponent<CameraController>();
+        if (camController != null)
+        {
+            camController.TriggerShake(intensity, duration);
+        }
+        else
+        {
+            // Fallback (eski yöntem, eğer CameraController yoksa)
+            StartScreenShake(intensity, duration);
+        }
+    }
+
+    private void StartScreenShake(float intensity, float duration)
+    {
+        if (cameraRoot == null)
+            return;
+
+        if (shakeCoroutine != null)
+            StopCoroutine(shakeCoroutine);
+
+        shakeCoroutine = StartCoroutine(ScreenShakeRoutine(intensity, duration));
+    }
+
+    private IEnumerator ScreenShakeRoutine(float intensity, float duration)
+    {
+        // NOT: CameraController her LateUpdate'de kameranın pozisyonunu güncelliyor.
+        // Burada "başlangıç pozisyonunu" sabitleyip sonunda geri yazarsak drift/sıçrama olur.
+        // Bunun yerine her framede sadece kendi offset'imizi uygulayıp geri alıyoruz.
+        Vector3 lastOffset = Vector3.zero;
         float elapsed = 0f;
 
-        while (elapsed < shakeDuration)
+        while (elapsed < duration)
         {
-            float x = Random.Range(-1f, 1f) * shakeIntensity;
-            float y = Random.Range(-1f, 1f) * shakeIntensity;
+            // Önce bir önceki offset'i geri al (baz pozisyon CameraController tarafından yönetilsin)
+            cameraRoot.localPosition -= lastOffset;
 
-            cameraRoot.localPosition = originalPos + new Vector3(x, y, 0);
+            float x = Random.Range(-1f, 1f) * intensity;
+            float y = Random.Range(-1f, 1f) * intensity;
 
-            elapsed += Time.deltaTime;
+            lastOffset = new Vector3(x, y, 0);
+            cameraRoot.localPosition += lastOffset;
+
+            elapsed += Time.unscaledDeltaTime;
             yield return null;
         }
 
-        cameraRoot.localPosition = originalPos;
+        // Son offset'i temizle
+        cameraRoot.localPosition -= lastOffset;
+        shakeCoroutine = null;
     }
 
     private static Vector2 RotateVector(Vector2 v, float degrees)
@@ -191,6 +249,59 @@ public class WorldRotationManager : MonoBehaviour
         float cos = Mathf.Cos(rad);
         float sin = Mathf.Sin(rad);
         return new Vector2(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
+    }
+
+    /// <summary>
+    /// Rotasyon sonrası oyuncunun platforma gömülmüşse yukarı çıkarır
+    /// </summary>
+    private void DepenetratePlayer()
+    {
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj == null) return;
+
+        Rigidbody2D playerRb = playerObj.GetComponent<Rigidbody2D>();
+        Collider2D playerCollider = playerObj.GetComponent<Collider2D>();
+        if (playerRb == null || playerCollider == null) return;
+
+        // Yerçekiminin tersi yönünde (yukarı) kontrol et
+        Vector2 upDir = -Physics2D.gravity.normalized;
+        if (upDir.sqrMagnitude < 0.001f) upDir = Vector2.up;
+
+        // Oyuncunun collider'ının altındaki overlap'leri kontrol et
+        ContactFilter2D filter = new ContactFilter2D();
+        filter.useTriggers = false;
+        filter.SetLayerMask(Physics2D.AllLayers & ~(1 << playerObj.layer)); // Oyuncunun kendi layer'ı hariç
+
+        Collider2D[] results = new Collider2D[8];
+        int overlapCount = playerCollider.Overlap(filter, results);
+
+        if (overlapCount > 0)
+        {
+            // Gömülme var, oyuncuyu yukarı it
+            float pushDistance = 0.15f; // Küçük bir miktar yukarı it
+            
+            // En fazla 5 iterasyon ile oyuncuyu çıkar
+            for (int i = 0; i < 5; i++)
+            {
+                playerRb.position += upDir * pushDistance;
+                
+                // Fizik sistemini güncelle
+                Physics2D.SyncTransforms();
+                
+                // Hala gömülü mü kontrol et
+                overlapCount = playerCollider.Overlap(filter, results);
+                if (overlapCount == 0)
+                    break;
+            }
+
+            // Dikey hızı sıfırla (gömülmeden çıktıktan sonra ani düşmeyi önle)
+            Vector2 vel = playerRb.linearVelocity;
+            float horizontalSpeed = Vector2.Dot(vel, new Vector2(-upDir.y, upDir.x));
+            playerRb.linearVelocity = new Vector2(-upDir.y, upDir.x) * horizontalSpeed;
+
+            if (debugMode)
+                Debug.Log($"Player depenetrated after rotation");
+        }
     }
 
     /// <summary>

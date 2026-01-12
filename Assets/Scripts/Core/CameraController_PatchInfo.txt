@@ -1,0 +1,2 @@
+// Placeholder for CameraController modifications
+// We need to implement 'logicalPosition' to separate physics/logic movement from visual shake.

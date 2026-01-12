@@ -13,24 +13,26 @@ public class ProgressionManager : MonoBehaviour
     [Header("Progression")]
     [SerializeField] private int stageIndex = 0;
 
-    [Header("Tilt (Degrees)")]
+    [Header("Tilt Wave System")]
     [SerializeField] private bool enableTiltProgression = true;
     [SerializeField] private float tiltStepDegrees = 1.75f;
-    [SerializeField] private float maxTiltDegrees = 45f;
+    [SerializeField] private float maxTiltDegrees = 7f;           // Dalga zirvesi (max eğim)
+    [SerializeField] private int stagesPerWave = 3;               // Kaç stage'de bir dalga tamamlanır
+    [SerializeField] private float tiltResetDuration = 1.5f;      // Eğim sıfırlanma animasyon süresi
     [Tooltip("Saat yönünde artış için -1, saat yönünün tersine için +1")]
     [SerializeField] private float tiltDirectionSign = -1f;
 
+    [Header("Speed Scaling (Sürekli Artar)")]
+    [SerializeField] private bool enableSpeedScaling = true;
+    [SerializeField] private float speedStep = 0.015f;            // %1.5 her stage
+    [SerializeField] private float maxSpeedMultiplier = 1.5f;     // Max %50 hızlanma
+
     [Header("Player Scaling")]
     [SerializeField] private bool enablePlayerScaling = true;
-    [SerializeField] private float playerSpeedStep = 0.07f; // %7
-    [SerializeField] private float playerJumpStep = 0.04f;  // %4
-    [SerializeField] private float maxPlayerSpeedMultiplier = 2.0f;
-    [SerializeField] private float maxPlayerJumpMultiplier = 1.5f;
-
-    [Header("Trap Scaling")]
-    [SerializeField] private bool enableTrapScaling = true;
-    [SerializeField] private float trapSpeedStep = 0.06f; // %6 - daha belirgin
-    [SerializeField] private float maxTrapSpeedMultiplier = 1.8f;
+    [SerializeField] private float playerSpeedStep = 0.02f; // %2
+    [SerializeField] private float playerJumpStep = 0.01f;  // %1
+    [SerializeField] private float maxPlayerSpeedMultiplier = 1.06f; // max %6
+    [SerializeField] private float maxPlayerJumpMultiplier = 1.04f;  // max %4
 
     [Header("Game Speed (Optional)")]
     [SerializeField] private bool enableTimeScale = false;
@@ -44,6 +46,7 @@ public class ProgressionManager : MonoBehaviour
     private float currentPlayerSpeedMultiplier = 1f;
     private float currentPlayerJumpMultiplier = 1f;
     private float currentTrapSpeedMultiplier = 1f;
+    private int currentWave = 0;                                  // Hangi dalgadayız
 
     private float baseFixedDeltaTime;
 
@@ -52,6 +55,7 @@ public class ProgressionManager : MonoBehaviour
     public float PlayerSpeedMultiplier => currentPlayerSpeedMultiplier;
     public float PlayerJumpMultiplier => currentPlayerJumpMultiplier;
     public float TrapSpeedMultiplier => currentTrapSpeedMultiplier;
+    public int CurrentWave => currentWave;
 
     private void Awake()
     {
@@ -95,28 +99,40 @@ public class ProgressionManager : MonoBehaviour
     {
         stageIndex++;
 
+        // Tilt: üçgen dalga (artan -> azalan -> artan)
+        // Örn stagesPerWave=3 ve step=1.75 => stage: 1:-1.75, 2:-3.5, 3:-5.25, 4:-3.5, 5:-1.75, 6:0, 7:-1.75 ...
         if (enableTiltProgression)
         {
+            int peakSteps = Mathf.Max(1, stagesPerWave);
+            int cycleLen = peakSteps * 2; // triangle period
+            int m = stageIndex % cycleLen; // 0..cycleLen-1
+            int k = (m <= peakSteps) ? m : (cycleLen - m); // 0..peakSteps
+
             float sign = Mathf.Sign(tiltDirectionSign == 0 ? -1f : tiltDirectionSign);
-            float targetAbs = Mathf.Clamp(stageIndex * tiltStepDegrees, 0f, maxTiltDegrees);
+            float targetAbs = Mathf.Clamp(k * tiltStepDegrees, 0f, maxTiltDegrees);
             float targetSigned = targetAbs * sign;
             float delta = targetSigned - currentTiltSignedDegrees;
 
             currentTiltSignedDegrees = targetSigned;
 
-            if (WorldRotationManager.Instance != null)
+            if (WorldRotationManager.Instance != null && Mathf.Abs(delta) > 0.01f)
                 WorldRotationManager.Instance.RotateByAngle(delta);
+
+            // Wave sayacı: her peakSteps stage'de bir tepe görülür (artan fazın sonu)
+            // Bu sadece debug/presentasyon için.
+            currentWave = stageIndex / peakSteps;
+        }
+
+        // Hız SÜREKLİ artar (dalga sıfırlamaz)
+        if (enableSpeedScaling)
+        {
+            currentTrapSpeedMultiplier = Mathf.Min(maxSpeedMultiplier, 1f + stageIndex * speedStep);
         }
 
         if (enablePlayerScaling)
         {
             currentPlayerSpeedMultiplier = Mathf.Min(maxPlayerSpeedMultiplier, 1f + stageIndex * playerSpeedStep);
             currentPlayerJumpMultiplier = Mathf.Min(maxPlayerJumpMultiplier, 1f + stageIndex * playerJumpStep);
-        }
-
-        if (enableTrapScaling)
-        {
-            currentTrapSpeedMultiplier = Mathf.Min(maxTrapSpeedMultiplier, 1f + stageIndex * trapSpeedStep);
         }
 
         if (enableTimeScale)
@@ -127,11 +143,14 @@ public class ProgressionManager : MonoBehaviour
         }
 
         ApplyAll();
+        
+        Debug.Log($"Stage {stageIndex} | Wave {currentWave} | Tilt: {currentTiltSignedDegrees:F1}° | Speed: x{currentTrapSpeedMultiplier:F2}");
     }
 
     public void LoadFromCheckpoint(int savedStageIndex, float savedWorldAngleDegrees)
     {
         stageIndex = Mathf.Max(0, savedStageIndex);
+        currentWave = stageIndex / stagesPerWave;
 
         if (enablePlayerScaling)
         {
@@ -139,8 +158,8 @@ public class ProgressionManager : MonoBehaviour
             currentPlayerJumpMultiplier = Mathf.Min(maxPlayerJumpMultiplier, 1f + stageIndex * playerJumpStep);
         }
 
-        if (enableTrapScaling)
-            currentTrapSpeedMultiplier = Mathf.Min(maxTrapSpeedMultiplier, 1f + stageIndex * trapSpeedStep);
+        if (enableSpeedScaling)
+            currentTrapSpeedMultiplier = Mathf.Min(maxSpeedMultiplier, 1f + stageIndex * speedStep);
 
         if (enableTiltProgression)
             currentTiltSignedDegrees = savedWorldAngleDegrees;
@@ -161,6 +180,7 @@ public class ProgressionManager : MonoBehaviour
     public void ResetProgression()
     {
         stageIndex = 0;
+        currentWave = 0;
         currentTiltSignedDegrees = 0f;
         currentPlayerSpeedMultiplier = 1f;
         currentPlayerJumpMultiplier = 1f;
@@ -187,12 +207,11 @@ public class ProgressionManager : MonoBehaviour
     private void OnGUI()
     {
         // Debug hızlı test
-        GUILayout.BeginArea(new Rect(10, 170, 240, 160));
-        GUILayout.Label($"Stage: {stageIndex}");
-        GUILayout.Label($"Tilt: {currentTiltSignedDegrees:0.0}°");
+        GUILayout.BeginArea(new Rect(10, 170, 240, 180));
+        GUILayout.Label($"Stage: {stageIndex} | Wave: {currentWave}");
+        GUILayout.Label($"Tilt: {currentTiltSignedDegrees:0.0}° (max {maxTiltDegrees}°)");
+        GUILayout.Label($"Speed x{currentTrapSpeedMultiplier:0.00}");
         GUILayout.Label($"PlayerSpeed x{currentPlayerSpeedMultiplier:0.00}");
-        GUILayout.Label($"PlayerJump x{currentPlayerJumpMultiplier:0.00}");
-        GUILayout.Label($"TrapSpeed x{currentTrapSpeedMultiplier:0.00}");
         if (enableTimeScale)
             GUILayout.Label($"TimeScale: {Time.timeScale:0.00}");
 

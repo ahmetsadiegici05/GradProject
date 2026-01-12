@@ -61,6 +61,11 @@ public class PlayerMovement : MonoBehaviour
         // Fizik rotasyonunu kilitle, görsel rotasyonu biz yöneteceğiz.
         body.freezeRotation = true;
 
+        // Stage ilerledikçe hız artınca bazen ince collider'lardan "tünelleme" yaşanabiliyor.
+        // Continuous çarpışma + interpolation bunu belirgin şekilde azaltır.
+        body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        body.interpolation = RigidbodyInterpolation2D.Interpolate;
+
         if (visualRoot == null)
             visualRoot = transform;
     }
@@ -77,8 +82,8 @@ public class PlayerMovement : MonoBehaviour
         Vector2 gravityDir = Physics2D.gravity.normalized;
         Vector2 rightDir = new Vector2(-gravityDir.y, gravityDir.x); // Yerçekimine dik = "sağ"
 
-        // Karakteri yerçekimine göre döndür (ayakta kalsın)
-        AlignVisualToGravity(gravityDir);
+        // Karakteri yerçekimine göre döndür (Collider hizalansın)
+        AlignPlayerToGravity(gravityDir);
 
         // Flip (yerçekimi yönüne göre)
         if (rawHorizontalInput > 0.01f)
@@ -183,26 +188,31 @@ public class PlayerMovement : MonoBehaviour
         );
     }
 
-    private void AlignVisualToGravity(Vector2 gravityDir)
+    private void AlignPlayerToGravity(Vector2 gravityDir)
     {
-        if (visualRoot == null)
-            return;
-
         // "Up" yönü yerçekiminin tersi
         Vector2 upDir = -gravityDir;
         if (upDir.sqrMagnitude < 0.0001f)
             return;
 
-        // upDir = (0,1) iken açı 0 olmalı
         float targetAngle = Mathf.Atan2(upDir.y, upDir.x) * Mathf.Rad2Deg - 90f;
         Quaternion targetRot = Quaternion.Euler(0f, 0f, targetAngle);
 
-        // Time slow aktifken rotasyon hızı da kompanse edilmeli
         float maxStep = alignToGravityDegreesPerSecond <= 0f
             ? 99999f
             : alignToGravityDegreesPerSecond * Time.deltaTime * TimeCompensation;
 
-        visualRoot.rotation = Quaternion.RotateTowards(visualRoot.rotation, targetRot, maxStep);
+        // Player'ın kendisini döndür (Collider dahil)
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, maxStep);
+        
+        // VisualRoot eğer script tarafından dönüyorsa (parent ile aynı değilse ve child ise),
+        // parent döndüğü için visualRoot rotation'ı sıfırlanmalı/sabitlenmeli.
+        if (visualRoot != null && visualRoot != transform)
+        {
+            // Eğer visualRoot child ise, parent (transform) döndüğünde o da döner. 
+            // Ekstra dönmesine gerek yok, local olarak sıfırla.
+            visualRoot.localRotation = Quaternion.identity;
+        }
     }
 
     private bool isGrounded()
@@ -210,11 +220,29 @@ public class PlayerMovement : MonoBehaviour
         // Yerçekimi yönüne göre zemin kontrolü
         Vector2 gravityDir = Physics2D.gravity.normalized;
         
+        // Rotation'lı durumda doğru BoxCast için:
+        // Size: local size * scale ile eşleşmeli.
+        // Rotation: transform.eulerAngles.z
+        
+        // Scale'in pozitif hali
+        Vector2 scale = transform.lossyScale;
+        Vector2 boxSize = boxCollider.size * new Vector2(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
+        
+        // Offset de rotate edilmeli -> transform.TransformPoint ile
+        // (Not: BoxCollider.offset local space'te)
+        // Ancak Physics2D.BoxCast 'origin' ister. bounds.center zaten world space center'dır.
+        // Ama Rotasyonlu durumda bounds.center DOĞRU merkezdir, ama bounds.size yanlıştır (AABB).
+        // Bu yüzden boxSize'ı kendimiz hesapladık. Origin olarak yine bounds.center veya transform + rotatedOffset kullanabiliriz.
+        // TransformPoint(offset) en garantisidir.
+        
+        Vector2 origin = transform.TransformPoint(boxCollider.offset);
+        float angle = transform.eulerAngles.z;
+
         RaycastHit2D hit = Physics2D.BoxCast(
-            boxCollider.bounds.center,
-            boxCollider.bounds.size,
-            0,
-            gravityDir,  // Yerçekimi yönünde kontrol
+            origin,
+            boxSize,
+            angle,
+            gravityDir,
             0.1f,
             groundLayer
         );
@@ -226,12 +254,25 @@ public class PlayerMovement : MonoBehaviour
         // Baktığı yöne göre duvar kontrolü (yerçekimine dik)
         Vector2 gravityDir = Physics2D.gravity.normalized;
         Vector2 rightDir = new Vector2(-gravityDir.y, gravityDir.x);
-        Vector2 checkDir = rightDir * Mathf.Sign(transform.localScale.x);
+        // transform.right zaten rightDir ile eşleşecektir (eğer dönüş tamamlandıysa).
         
+        // Facing Scale, transform rotation'dan bağımsızdır (Local Scale X).
+        // Eğer scale.x pozitifse transform.right yönüne, negatifse -transform.right yönüne bakıyor.
+        float facingDir = Mathf.Sign(transform.lossyScale.x);
+        
+        // Check direction
+        Vector2 checkDir = rightDir * facingDir;
+        
+        // BoxCast params
+        Vector2 scale = transform.lossyScale;
+        Vector2 boxSize = boxCollider.size * new Vector2(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
+        Vector2 origin = transform.TransformPoint(boxCollider.offset);
+        float angle = transform.eulerAngles.z;
+
         RaycastHit2D hit = Physics2D.BoxCast(
-            boxCollider.bounds.center,
-            boxCollider.bounds.size,
-            0,
+            origin,
+            boxSize,
+            angle,
             checkDir,
             0.1f,
             wallLayer

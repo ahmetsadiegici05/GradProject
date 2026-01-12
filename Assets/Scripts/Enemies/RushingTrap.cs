@@ -35,6 +35,9 @@ public class RushingTrap : MonoBehaviour
     private Vector2 rushDirection;
     private Rigidbody2D rb;
 
+    [Header("Rotation Safety")]
+    [SerializeField] private bool pauseDuringWorldRotation = true;
+
     private enum TrapState { Idle, Warning, Rushing, Returning, Cooldown }
     private TrapState currentState = TrapState.Idle;
 
@@ -42,9 +45,25 @@ public class RushingTrap : MonoBehaviour
 
     private float baseRushSpeed;
     private float baseReturnSpeed;
-    
-    // Yerçekimi değişimi takibi
-    private Vector2 lastGravityDir;
+
+    private Vector2 desiredVelocity;
+
+    private void Awake()
+    {
+        // SpriteRenderer'ı Awake'de bul (Start'tan önce)
+        if (spriteRenderer == null)
+            spriteRenderer = GetComponent<SpriteRenderer>();
+            
+        // Sprite'ın görünür olduğundan emin ol
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.enabled = true;
+            // normalColor alpha'sı 0 olabilir (Inspector'da ayarlanmadıysa), zorla 1 yap
+            if (normalColor.a < 0.01f)
+                normalColor = new Color(normalColor.r, normalColor.g, normalColor.b, 1f);
+            spriteRenderer.color = normalColor;
+        }
+    }
 
     private void Start()
     {
@@ -54,36 +73,37 @@ public class RushingTrap : MonoBehaviour
 
         baseRushSpeed = rushSpeed;
         baseReturnSpeed = returnSpeed;
-        
-        lastGravityDir = Physics2D.gravity.normalized;
 
-        if (spriteRenderer == null)
-            spriteRenderer = GetComponent<SpriteRenderer>();
+        desiredVelocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
 
+        // Rengi tekrar uygula (Awake'de de yapıldı ama emin olmak için)
         if (spriteRenderer != null)
+        {
+            spriteRenderer.enabled = true;
             spriteRenderer.color = normalColor;
+        }
             
-        Debug.Log($"RushingTrap '{name}' started at position: {transform.position}");
+        Debug.Log($"RushingTrap '{name}' started at position: {transform.position}, visible: {(spriteRenderer != null ? spriteRenderer.enabled.ToString() : "no renderer")}");
+    }
+
+    private void FixedUpdate()
+    {
+        if (rb == null)
+            return;
+
+        rb.linearVelocity = desiredVelocity;
     }
 
     private void Update()
     {
-        // Yerçekimi değiştiyse pozisyonu güncelle
-        Vector2 currentGravityDir = Physics2D.gravity.normalized;
-        if (Vector2.Dot(lastGravityDir, currentGravityDir) < 0.99f)
+        // Dünya/yerçekimi dönerken tuzağı dondur (dalga reset animasyonu sırasında drift olmasın)
+        if (pauseDuringWorldRotation && WorldRotationManager.Instance != null && WorldRotationManager.Instance.IsRotating)
         {
-            // Yerçekimi değişti - mevcut pozisyonu yeni startPosition yap
-            startPosition = transform.position;
-            lastGravityDir = currentGravityDir;
-            
-            // State'i resetle
-            if (currentState != TrapState.Idle)
-            {
-                currentState = TrapState.Idle;
+            desiredVelocity = Vector2.zero;
+            if (rb != null)
                 rb.linearVelocity = Vector2.zero;
-                if (spriteRenderer != null)
-                    spriteRenderer.color = normalColor;
-            }
+            return;
         }
         
         switch (currentState)
@@ -157,6 +177,8 @@ public class RushingTrap : MonoBehaviour
     {
         currentState = TrapState.Rushing;
 
+        desiredVelocity = Vector2.zero;
+
         if (animator != null)
             animator.SetTrigger("Rush");
     }
@@ -167,7 +189,7 @@ public class RushingTrap : MonoBehaviour
         if (ProgressionManager.Instance != null)
             speedMultiplier = ProgressionManager.Instance.TrapSpeedMultiplier;
 
-        rb.linearVelocity = rushDirection * (baseRushSpeed * speedMultiplier);
+        desiredVelocity = rushDirection * (baseRushSpeed * speedMultiplier);
 
         // Maksimum mesafe kontrolü
         float distanceFromStart = Vector2.Distance(transform.position, startPosition);
@@ -180,7 +202,9 @@ public class RushingTrap : MonoBehaviour
     private void StartReturning()
     {
         currentState = TrapState.Returning;
-        rb.linearVelocity = Vector2.zero;
+        desiredVelocity = Vector2.zero;
+        if (rb != null)
+            rb.linearVelocity = Vector2.zero;
 
         if (spriteRenderer != null)
             spriteRenderer.color = normalColor;
@@ -197,12 +221,14 @@ public class RushingTrap : MonoBehaviour
         if (ProgressionManager.Instance != null)
             speedMultiplier = ProgressionManager.Instance.TrapSpeedMultiplier;
 
-        rb.linearVelocity = direction * (baseReturnSpeed * speedMultiplier);
+        desiredVelocity = direction * (baseReturnSpeed * speedMultiplier);
 
         if (Vector2.Distance(transform.position, startPosition) < 0.1f)
         {
             transform.position = startPosition;
-            rb.linearVelocity = Vector2.zero;
+            desiredVelocity = Vector2.zero;
+            if (rb != null)
+                rb.linearVelocity = Vector2.zero;
             StartCooldown();
         }
     }
@@ -211,6 +237,8 @@ public class RushingTrap : MonoBehaviour
     {
         currentState = TrapState.Cooldown;
         stateTimer = cooldownTime;
+
+        desiredVelocity = Vector2.zero;
     }
 
     private void HandleCooldown()
