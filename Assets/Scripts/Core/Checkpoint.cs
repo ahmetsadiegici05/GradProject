@@ -22,6 +22,16 @@ public class Checkpoint : MonoBehaviour
             CheckpointData.LastCheckpointPosition = transform.position;
             CheckpointData.HasCheckpoint = true;
 
+            // Progression state'i kaydet
+            if (ProgressionManager.Instance != null)
+            {
+                CheckpointData.HasProgressionState = true;
+                CheckpointData.SavedStageIndex = ProgressionManager.Instance.StageIndex;
+            }
+
+            if (WorldRotationManager.Instance != null)
+                CheckpointData.SavedWorldAngleDegrees = WorldRotationManager.Instance.CurrentAngle;
+
             if (unlockSpikeheadShooting)
                 CheckpointData.SpikeheadShootingUnlocked = true;
             

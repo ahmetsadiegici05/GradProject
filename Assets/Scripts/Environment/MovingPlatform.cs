@@ -12,12 +12,15 @@ public class MovingPlatform : MonoBehaviour
 
     private Rigidbody2D rb;
     private Transform target;
+    private float baseSpeed;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        baseSpeed = speed;
     }
 
     private void Start()
@@ -37,7 +40,13 @@ public class MovingPlatform : MonoBehaviour
     {
         if (target == null) return;
 
-        Vector3 newPosition = Vector3.MoveTowards(transform.position, target.position, speed * Time.fixedDeltaTime);
+        float speedMultiplier = 1f;
+        if (ProgressionManager.Instance != null)
+            speedMultiplier = ProgressionManager.Instance.TrapSpeedMultiplier;
+
+        float effectiveSpeed = baseSpeed * speedMultiplier;
+
+        Vector3 newPosition = Vector3.MoveTowards(transform.position, target.position, effectiveSpeed * Time.fixedDeltaTime);
         rb.MovePosition(newPosition);
 
         if (Vector3.Distance(newPosition, target.position) < 0.02f)

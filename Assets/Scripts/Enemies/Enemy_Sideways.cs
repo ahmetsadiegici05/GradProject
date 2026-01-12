@@ -5,43 +5,87 @@ public class Enemy_Sideways : MonoBehaviour
     [SerializeField] private float movementDistance;
     [SerializeField] private float speed;
     [SerializeField] private float damage;
-    private bool movingLeft;
-    private float leftEdge;
-    private float rightEdge;
+    
+    private bool movingInNegativeDir;
+    private float baseSpeed;
+    
+    // Yerçekimine göre hareket için
+    private Vector2 startPosition;
+    private Vector2 moveAxis; // Hareket ekseni (yerçekimine dik)
 
     private void Awake()
     {
-        leftEdge = transform.position.x - movementDistance;
-        rightEdge = transform.position.x + movementDistance;
+        baseSpeed = speed;
+        startPosition = transform.position;
+    }
+
+    private void Start()
+    {
+        // Başlangıçta hareket eksenini hesapla
+        UpdateMoveAxis();
     }
 
     private void Update()
     {
-        if (movingLeft)
+        // Hareket eksenini yerçekimine göre güncelle
+        UpdateMoveAxis();
+
+        float speedMultiplier = 1f;
+        if (ProgressionManager.Instance != null)
+            speedMultiplier = ProgressionManager.Instance.TrapSpeedMultiplier;
+
+        float effectiveSpeed = baseSpeed * speedMultiplier;
+
+        // Mevcut pozisyonun başlangıca göre hareket ekseni üzerindeki mesafesi
+        Vector2 currentPos = transform.position;
+        float currentOffset = Vector2.Dot(currentPos - startPosition, moveAxis);
+
+        if (movingInNegativeDir)
         {
-            if (transform.position.x > leftEdge)
+            if (currentOffset > -movementDistance)
             {
-                transform.position = new Vector3(transform.position.x - speed * Time.deltaTime, transform.position.y, transform.position.z);
+                // Negatif yönde hareket
+                Vector2 movement = -moveAxis * effectiveSpeed * Time.deltaTime;
+                transform.position = (Vector2)transform.position + movement;
             }
             else
-                movingLeft = false;
+            {
+                movingInNegativeDir = false;
+            }
         }
         else
         {
-            if (transform.position.x < rightEdge)
+            if (currentOffset < movementDistance)
             {
-                transform.position = new Vector3(transform.position.x + speed * Time.deltaTime, transform.position.y, transform.position.z);
+                // Pozitif yönde hareket
+                Vector2 movement = moveAxis * effectiveSpeed * Time.deltaTime;
+                transform.position = (Vector2)transform.position + movement;
             }
             else
-                movingLeft = true;
+            {
+                movingInNegativeDir = true;
+            }
         }
+    }
+
+    private void UpdateMoveAxis()
+    {
+        // Yerçekimine dik olan eksen = hareket ekseni
+        Vector2 gravityDir = Physics2D.gravity.normalized;
+        if (gravityDir.sqrMagnitude < 0.001f)
+            gravityDir = Vector2.down;
+
+        // Yerçekimine dik = "yatay" hareket ekseni
+        moveAxis = new Vector2(-gravityDir.y, gravityDir.x);
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.tag == "Player")
+        if (collision.CompareTag("Player"))
         {
-            collision.GetComponent<Health>().TakeDamage(damage);
+            Health health = collision.GetComponent<Health>();
+            if (health != null)
+                health.TakeDamage(damage);
         }
     }
 }

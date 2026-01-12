@@ -6,7 +6,8 @@ public class KillOnFall : MonoBehaviour
     [SerializeField] private Transform target;
 
     [Header("Fall Death")]
-    [SerializeField] private float killY = -20f;
+    [Tooltip("Yerçekimi yönünde bu mesafe kadar uzaklaşınca öl")]
+    [SerializeField] private float killDistance = 20f;
 
     [SerializeField] private Health health;
     [SerializeField] private UIManager uiManager;
@@ -14,6 +15,7 @@ public class KillOnFall : MonoBehaviour
     [SerializeField] private bool disableObjectIfNoHandlers = true;
 
     private bool triggered;
+    private Vector2 initialPosition;
 
     private void Awake()
     {
@@ -33,6 +35,12 @@ public class KillOnFall : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        // Başlangıç pozisyonunu kaydet (checkpoint'ten veya spawn'dan)
+        initialPosition = target != null ? (Vector2)target.position : Vector2.zero;
+    }
+
     private void Update()
     {
         if (triggered)
@@ -41,7 +49,17 @@ public class KillOnFall : MonoBehaviour
         if (target == null)
             return;
 
-        if (target.position.y < killY)
+        // Yerçekimi yönünü al (dönen dünyada değişir)
+        Vector2 gravityDir = Physics2D.gravity.normalized;
+        if (gravityDir.sqrMagnitude < 0.001f)
+            gravityDir = Vector2.down;
+
+        // Oyuncunun yerçekimi yönündeki ilerlemesini hesapla
+        // Pozitif değer = yerçekimi yönünde ilerleme (düşme)
+        Vector2 currentPos = target.position;
+        float fallAmount = Vector2.Dot(currentPos - initialPosition, gravityDir);
+
+        if (fallAmount > killDistance)
         {
             triggered = true;
 
@@ -52,5 +70,15 @@ public class KillOnFall : MonoBehaviour
             else if (disableObjectIfNoHandlers)
                 gameObject.SetActive(false);
         }
+    }
+
+    /// <summary>
+    /// Checkpoint veya respawn sonrası referans noktasını güncelle
+    /// </summary>
+    public void ResetFallTracking()
+    {
+        triggered = false;
+        if (target != null)
+            initialPosition = target.position;
     }
 }

@@ -27,12 +27,16 @@ public class Spikehead : EnemyDamage
     private bool attacking;
     private Rigidbody2D rb;
 
+    private float baseSpeed;
+
     private GameObject[] pooledFireballs;
 
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         CalculateDirections();
+
+        baseSpeed = speed;
 
         if (firepoint == null)
             firepoint = transform;
@@ -89,14 +93,22 @@ public class Spikehead : EnemyDamage
     {
         fireballTimer += Time.deltaTime;
 
+        // Her frame'de yönleri yerçekimine göre güncelle
+        CalculateDirections();
+
         if (attacking)
         {
             // Oyuncu alanında değilse durdu
             if (!IsPlayerInRange(out Vector2 playerDirection))
             {
                 Stop();
-                // Rasgele sola veya sağa git
-                moveDirection = Random.value > 0.5f ? Vector2.right : Vector2.left;
+                // Yerçekimine göre rasgele sağa veya sola git
+                Vector2 gravityDir = Physics2D.gravity.normalized;
+                if (gravityDir.sqrMagnitude < 0.001f)
+                    gravityDir = Vector2.down;
+                Vector2 rightDir = new Vector2(-gravityDir.y, gravityDir.x);
+                
+                moveDirection = Random.value > 0.5f ? rightDir : -rightDir;
                 attacking = true; // Patrolü devam ettir
                 return;
             }
@@ -117,7 +129,11 @@ public class Spikehead : EnemyDamage
             }
             
             // Move towards direction
-            rb.linearVelocity = moveDirection * speed;
+            float speedMultiplier = 1f;
+            if (ProgressionManager.Instance != null)
+                speedMultiplier = ProgressionManager.Instance.TrapSpeedMultiplier;
+
+            rb.linearVelocity = moveDirection * (baseSpeed * speedMultiplier);
         }
         else
         {
@@ -194,10 +210,18 @@ public class Spikehead : EnemyDamage
 
     private void CalculateDirections()
     {
-        directions[0] = Vector2.right;     // Right
-        directions[1] = Vector2.left;      // Left
-        directions[2] = Vector2.up;        // Up
-        directions[3] = Vector2.down;      // Down
+        // Yerçekimine göre yönleri hesapla
+        Vector2 gravityDir = Physics2D.gravity.normalized;
+        if (gravityDir.sqrMagnitude < 0.001f)
+            gravityDir = Vector2.down;
+
+        Vector2 rightDir = new Vector2(-gravityDir.y, gravityDir.x);
+        Vector2 upDir = -gravityDir;
+
+        directions[0] = rightDir;      // "Sağ" (yerçekimine dik)
+        directions[1] = -rightDir;     // "Sol"
+        directions[2] = upDir;         // "Yukarı" (yerçekiminin tersi)
+        directions[3] = -upDir;        // "Aşağı" (yerçekimi yönü)
     }
 
     private void Stop()
@@ -222,10 +246,23 @@ public class Spikehead : EnemyDamage
 
     private Vector2 AxisLockedDirection(Vector2 direction)
     {
-        if (Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
-            return new Vector2(Mathf.Sign(direction.x), 0f);
+        // Yerçekimine göre eksenleri hesapla
+        Vector2 gravityDir = Physics2D.gravity.normalized;
+        if (gravityDir.sqrMagnitude < 0.001f)
+            gravityDir = Vector2.down;
 
-        return new Vector2(0f, Mathf.Sign(direction.y));
+        Vector2 rightDir = new Vector2(-gravityDir.y, gravityDir.x);
+        Vector2 upDir = -gravityDir;
+
+        // Yerçekimine göre "yatay" ve "dikey" bileşenleri hesapla
+        float horizontalComponent = Vector2.Dot(direction, rightDir);
+        float verticalComponent = Vector2.Dot(direction, upDir);
+
+        // Hangi eksen daha baskın?
+        if (Mathf.Abs(horizontalComponent) > Mathf.Abs(verticalComponent))
+            return rightDir * Mathf.Sign(horizontalComponent);
+
+        return upDir * Mathf.Sign(verticalComponent);
     }
 
     private new void OnTriggerEnter2D(Collider2D collision)

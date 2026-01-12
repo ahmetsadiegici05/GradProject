@@ -10,9 +10,12 @@ public class EnemyProjectile : MonoBehaviour
     private Vector2 direction;
     private BoxCollider2D boxCollider;
 
+    private float baseSpeed;
+
     private void Awake()
     {
         boxCollider = GetComponent<BoxCollider2D>();
+        baseSpeed = speed;
     }
 
     public void ActivateProjectile()
@@ -38,7 +41,13 @@ public class EnemyProjectile : MonoBehaviour
     {
         if (!gameObject.activeInHierarchy) return;
 
-        Vector3 movement = (Vector3)direction * speed * Time.deltaTime;
+        float speedMultiplier = 1f;
+        if (ProgressionManager.Instance != null)
+            speedMultiplier = ProgressionManager.Instance.TrapSpeedMultiplier;
+
+        float effectiveSpeed = baseSpeed * speedMultiplier;
+
+        Vector3 movement = (Vector3)direction * effectiveSpeed * Time.deltaTime;
         transform.position += movement;
 
         lifetime += Time.deltaTime;

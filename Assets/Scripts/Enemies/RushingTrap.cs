@@ -40,21 +40,52 @@ public class RushingTrap : MonoBehaviour
 
     private float stateTimer;
 
+    private float baseRushSpeed;
+    private float baseReturnSpeed;
+    
+    // Yerçekimi değişimi takibi
+    private Vector2 lastGravityDir;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
         startPosition = transform.position;
 
+        baseRushSpeed = rushSpeed;
+        baseReturnSpeed = returnSpeed;
+        
+        lastGravityDir = Physics2D.gravity.normalized;
+
         if (spriteRenderer == null)
             spriteRenderer = GetComponent<SpriteRenderer>();
 
         if (spriteRenderer != null)
             spriteRenderer.color = normalColor;
+            
+        Debug.Log($"RushingTrap '{name}' started at position: {transform.position}");
     }
 
     private void Update()
     {
+        // Yerçekimi değiştiyse pozisyonu güncelle
+        Vector2 currentGravityDir = Physics2D.gravity.normalized;
+        if (Vector2.Dot(lastGravityDir, currentGravityDir) < 0.99f)
+        {
+            // Yerçekimi değişti - mevcut pozisyonu yeni startPosition yap
+            startPosition = transform.position;
+            lastGravityDir = currentGravityDir;
+            
+            // State'i resetle
+            if (currentState != TrapState.Idle)
+            {
+                currentState = TrapState.Idle;
+                rb.linearVelocity = Vector2.zero;
+                if (spriteRenderer != null)
+                    spriteRenderer.color = normalColor;
+            }
+        }
+        
         switch (currentState)
         {
             case TrapState.Idle:
@@ -111,9 +142,9 @@ public class RushingTrap : MonoBehaviour
     {
         stateTimer -= Time.deltaTime;
 
-        // Titreme efekti
+        // Titreme efekti - yerçekimine dik yönde (rush yönünde) titre
         float shake = Mathf.Sin(Time.time * 50f) * 0.05f;
-        transform.position = startPosition + new Vector2(shake, 0);
+        transform.position = startPosition + rushDirection * shake;
 
         if (stateTimer <= 0)
         {
@@ -132,7 +163,11 @@ public class RushingTrap : MonoBehaviour
 
     private void HandleRushing()
     {
-        rb.linearVelocity = rushDirection * rushSpeed;
+        float speedMultiplier = 1f;
+        if (ProgressionManager.Instance != null)
+            speedMultiplier = ProgressionManager.Instance.TrapSpeedMultiplier;
+
+        rb.linearVelocity = rushDirection * (baseRushSpeed * speedMultiplier);
 
         // Maksimum mesafe kontrolü
         float distanceFromStart = Vector2.Distance(transform.position, startPosition);
@@ -157,7 +192,12 @@ public class RushingTrap : MonoBehaviour
     private void HandleReturning()
     {
         Vector2 direction = (startPosition - (Vector2)transform.position).normalized;
-        rb.linearVelocity = direction * returnSpeed;
+
+        float speedMultiplier = 1f;
+        if (ProgressionManager.Instance != null)
+            speedMultiplier = ProgressionManager.Instance.TrapSpeedMultiplier;
+
+        rb.linearVelocity = direction * (baseReturnSpeed * speedMultiplier);
 
         if (Vector2.Distance(transform.position, startPosition) < 0.1f)
         {
@@ -235,8 +275,12 @@ public class RushingTrap : MonoBehaviour
         
         if (playerRb != null)
         {
-            // İtme yönü: rush yönü + yukarı
-            Vector2 pushDirection = rushDirection + Vector2.up * upwardPushForce;
+            // Yerçekimine göre "yukarı" yönünü hesapla
+            Vector2 gravityDir = Physics2D.gravity.normalized;
+            Vector2 upDir = -gravityDir; // Yerçekiminin tersi = yukarı
+            
+            // İtme yönü: rush yönü + yukarı (yerçekimine göre)
+            Vector2 pushDirection = rushDirection + upDir * upwardPushForce;
             playerRb.linearVelocity = Vector2.zero; // Mevcut hızı sıfırla
             playerRb.AddForce(pushDirection.normalized * pushForce, ForceMode2D.Impulse);
         }
@@ -244,11 +288,23 @@ public class RushingTrap : MonoBehaviour
 
     private Vector2 GetAxisLockedDirection(Vector2 direction)
     {
-        // Spikehead ile aynı mantık - sadece yatay veya dikey
-        if (Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
-            return new Vector2(Mathf.Sign(direction.x), 0f);
+        // Yerçekimine göre "yatay" ve "dikey" eksenleri hesapla
+        Vector2 gravityDir = Physics2D.gravity.normalized;
+        if (gravityDir.sqrMagnitude < 0.001f)
+            gravityDir = Vector2.down;
         
-        return new Vector2(0f, Mathf.Sign(direction.y));
+        Vector2 upDir = -gravityDir;           // Yerçekiminin tersi = yukarı
+        Vector2 rightDir = new Vector2(-gravityDir.y, gravityDir.x); // Yerçekimine dik = sağ
+        
+        // Oyuncuya olan yönü yerçekimi eksenlerine göre ayrıştır
+        float horizontalComponent = Vector2.Dot(direction, rightDir);  // Yatay bileşen
+        float verticalComponent = Vector2.Dot(direction, upDir);       // Dikey bileşen
+        
+        // Hangi bileşen daha baskın?
+        if (Mathf.Abs(horizontalComponent) > Mathf.Abs(verticalComponent))
+            return rightDir * Mathf.Sign(horizontalComponent);  // Yatay saldır
+        
+        return upDir * Mathf.Sign(verticalComponent);  // Dikey saldır
     }
 
     private void OnDrawGizmosSelected()

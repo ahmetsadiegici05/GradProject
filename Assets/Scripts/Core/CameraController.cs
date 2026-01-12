@@ -16,7 +16,7 @@ public class CameraController : MonoBehaviour
     [SerializeField] private bool useRoomCamera = false;
     [SerializeField] private float roomTransitionSpeed = 3f;
     
-    private float currentPosX;
+    private Vector2 currentRoomPos;
     private float lookAhead;
     private Vector3 velocity = Vector3.zero;
 
@@ -44,26 +44,38 @@ public class CameraController : MonoBehaviour
 
         ApplyZoom();
 
+        // Yerçekimine göre yön vektörleri
+        Vector2 gravityDir = Physics2D.gravity.normalized;
+        if (gravityDir.sqrMagnitude < 0.001f)
+            gravityDir = Vector2.down;
+        
+        Vector2 rightDir = new Vector2(-gravityDir.y, gravityDir.x);
+        Vector2 upDir = -gravityDir;
+
         if (useRoomCamera)
         {
-            // Room camera modu
+            // Room camera modu - yerçekimine göre oda pozisyonuna git
+            Vector3 targetPos = new Vector3(currentRoomPos.x, currentRoomPos.y, transform.position.z);
             transform.position = Vector3.SmoothDamp(
                 transform.position, 
-                new Vector3(currentPosX, transform.position.y, transform.position.z), 
+                targetPos, 
                 ref velocity, 
                 roomTransitionSpeed
             );
         }
         else
         {
-            // Follow player modu (daha hızlı ve smooth)
+            // Follow player modu - yerçekimine göre takip
             float facing = Mathf.Sign(player.lossyScale.x);
             if (Mathf.Approximately(facing, 0f)) facing = 1f;
             lookAhead = Mathf.Lerp(lookAhead, lookAheadDistance * facing, Time.deltaTime * followSpeed);
             
+            // Yerçekimine göre look ahead yönü
+            Vector2 lookAheadOffset = rightDir * lookAhead;
+            
             Vector3 targetPos = new Vector3(
-                player.position.x + lookAhead, 
-                player.position.y, 
+                player.position.x + lookAheadOffset.x, 
+                player.position.y + lookAheadOffset.y, 
                 transform.position.z
             );
             
@@ -97,6 +109,6 @@ public class CameraController : MonoBehaviour
 
     public void MoveToNewRoom(Transform _newRoom)
     {
-        currentPosX = _newRoom.position.x;
+        currentRoomPos = _newRoom.position;
     }
 }
