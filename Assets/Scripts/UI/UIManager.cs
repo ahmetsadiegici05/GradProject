@@ -183,6 +183,10 @@ public class UIManager : MonoBehaviour
     {
         isPaused = false;
         Time.timeScale = 1f;
+        
+        // Gravity'yi sıfırla
+        Physics2D.gravity = new Vector2(0f, -Mathf.Abs(Physics2D.gravity.magnitude > 0.1f ? Physics2D.gravity.magnitude : 9.81f));
+        
         // Checkpoint verisini sıfırla
         CheckpointData.ResetData();
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
@@ -192,6 +196,10 @@ public class UIManager : MonoBehaviour
     {
         isPaused = false;
         Time.timeScale = 1f;
+        
+        // Gravity'yi sıfırla (eğimli kalmış olabilir)
+        Physics2D.gravity = new Vector2(0f, -Mathf.Abs(Physics2D.gravity.magnitude > 0.1f ? Physics2D.gravity.magnitude : 9.81f));
+        
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 

@@ -60,12 +60,26 @@ public class WorldRotationManager : MonoBehaviour
         if (!useInspectorGravityMagnitude)
         {
             float sceneMag = Physics2D.gravity.magnitude;
-            gravityMagnitude = sceneMag > 0.001f ? sceneMag : 9.81f;
+            // Eğer gravity çok yamuk ise (eski session'dan kalmış), magnitude'u default al
+            if (sceneMag < 0.001f || sceneMag > 100f)
+                sceneMag = 9.81f;
+            gravityMagnitude = sceneMag;
         }
 
-        // Eğer gravity sıfırsa (nadir), default aşağı yön ver.
-        if (rotateGravity && Physics2D.gravity.sqrMagnitude < 0.0001f)
+        // Checkpoint yoksa gravity'yi sıfırla (yeni oyun veya restart)
+        if (!CheckpointData.HasCheckpoint)
+        {
             Physics2D.gravity = Vector2.down * gravityMagnitude;
+            currentRotationAngle = 0f;
+            
+            if (rotateCamera && cameraRoot != null)
+                cameraRoot.rotation = Quaternion.identity;
+        }
+        // Eğer gravity sıfırsa (nadir), default aşağı yön ver.
+        else if (rotateGravity && Physics2D.gravity.sqrMagnitude < 0.0001f)
+        {
+            Physics2D.gravity = Vector2.down * gravityMagnitude;
+        }
     }
 
     private void Start()

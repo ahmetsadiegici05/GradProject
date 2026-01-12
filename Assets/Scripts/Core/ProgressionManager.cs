@@ -75,7 +75,17 @@ public class ProgressionManager : MonoBehaviour
                 playerMovement = playerObj.GetComponent<PlayerMovement>();
         }
 
-        ApplyAll();
+        // Checkpoint varsa oradan yükle, yoksa sıfırdan başla
+        if (CheckpointData.HasProgressionState)
+        {
+            LoadFromCheckpoint(CheckpointData.SavedStageIndex, CheckpointData.SavedWorldAngleDegrees);
+        }
+        else
+        {
+            // Yeni oyun - her şeyi sıfırla
+            stageIndex = 0;
+            ResetProgression();
+        }
     }
 
     /// <summary>
