@@ -113,13 +113,13 @@ public class WorldRotationManager : MonoBehaviour
     /// <summary>
     /// Dünyayı belirtilen açı kadar döndürür (pozitif = saat yönünün tersi, negatif = saat yönü)
     /// </summary>
-    public void RotateByAngle(float degrees)
+    public void RotateByAngle(float degrees, float? overrideShakeIntensity = null, float? overrideShakeDuration = null)
     {
         if (isRotating) return;
-        StartCoroutine(RotateRoutine(degrees));
+        StartCoroutine(RotateRoutine(degrees, overrideShakeIntensity, overrideShakeDuration));
     }
 
-    private IEnumerator RotateRoutine(float deltaDegrees)
+    private IEnumerator RotateRoutine(float deltaDegrees, float? overrideShakeIntensity = null, float? overrideShakeDuration = null)
     {
         isRotating = true;
 
@@ -171,9 +171,16 @@ public class WorldRotationManager : MonoBehaviour
         // Rotasyon sonrası oyuncuyu platformdan çıkar (gömülme düzeltmesi)
         DepenetratePlayer();
 
-        // Screen shake efekti (küçük açılarda kapalı)
-        if (useScreenShake && cameraRoot != null && Mathf.Abs(deltaDegrees) >= minDegreesForShake)
-            TriggerShakeFromCore(shakeIntensity, shakeDuration);
+        // Screen shake efekti
+        bool forceShake = (overrideShakeIntensity.HasValue || overrideShakeDuration.HasValue);
+        
+        // Eğer override varsa veya açı yeterince büyükse salla
+        if (useScreenShake && cameraRoot != null && (forceShake || Mathf.Abs(deltaDegrees) >= minDegreesForShake))
+        {
+            float finalIntensity = overrideShakeIntensity.GetValueOrDefault(shakeIntensity);
+            float finalDuration = overrideShakeDuration.GetValueOrDefault(shakeDuration);
+            TriggerShakeFromCore(finalIntensity, finalDuration);
+        }
 
         isRotating = false;
 

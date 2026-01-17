@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using TMPro;
 
 public class UIManager : MonoBehaviour
@@ -17,6 +18,9 @@ public class UIManager : MonoBehaviour
 
     [Header("Pause")]
     [SerializeField] private GameObject pauseScreen;
+    [Header("Audio Settings")]
+    [SerializeField] private Slider musicSlider;
+    [SerializeField] private Slider sfxSlider;
 
     private bool isPaused;
 
@@ -33,6 +37,11 @@ public class UIManager : MonoBehaviour
 
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
+    }
+
+    private void Start()
+    {
+        SetupAudio();
     }
 
     private void Update()
@@ -89,6 +98,49 @@ public class UIManager : MonoBehaviour
             playerNameInput.text = "";
             playerNameInput.interactable = true;
         }
+    }
+
+    private void SetupAudio()
+    {
+        if (musicSlider != null)
+        {
+            float savedMusic = PlayerPrefs.GetFloat("MusicVolume", 0.5f);
+            musicSlider.value = savedMusic;
+            musicSlider.onValueChanged.AddListener(OnMusicVolumeChanged);
+        }
+
+        if (sfxSlider != null)
+        {
+            float savedSFX = PlayerPrefs.GetFloat("SFXVolume", 1f);
+            sfxSlider.value = savedSFX;
+            sfxSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
+        }
+    }
+
+    public void OnMusicVolumeChanged(float value)
+    {
+        if (BackgroundMusic.Instance != null)
+        {
+            BackgroundMusic.Instance.SetVolume(value);
+        }
+
+        if (AmbientSound.Instance != null)
+        {
+            AmbientSound.Instance.SetVolume(value);
+        }
+
+        PlayerPrefs.SetFloat("MusicVolume", value);
+        PlayerPrefs.Save();
+    }
+
+    public void OnSFXVolumeChanged(float value)
+    {
+        if (SoundManager.instance != null)
+        {
+            SoundManager.instance.SetVolume(value);
+        }
+        PlayerPrefs.SetFloat("SFXVolume", value);
+        PlayerPrefs.Save();
     }
 
     public void SaveScoreToLeaderboard()

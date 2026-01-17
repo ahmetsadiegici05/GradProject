@@ -116,7 +116,20 @@ public class ProgressionManager : MonoBehaviour
             currentTiltSignedDegrees = targetSigned;
 
             if (WorldRotationManager.Instance != null && Mathf.Abs(delta) > 0.01f)
-                WorldRotationManager.Instance.RotateByAngle(delta);
+            {
+                // Stage 0 -> 1 geçişinde (ilk eğim) daha güçlü bir deprem efekti ver
+                if (stageIndex == 1)
+                {
+                    // Büyük deprem: Uzun süreli ve şiddetli
+                    WorldRotationManager.Instance.RotateByAngle(delta, 0.2f, 1.5f);
+                }
+                else
+                {
+                    // Diğer geçişler: Kontrollü sarsıntı (Ekran dışına taşırmayan, mekaniği bozmayan)
+                    // Intensity 0.08 (Hafif), Duration 0.5 (Kısa)
+                    WorldRotationManager.Instance.RotateByAngle(delta, 0.08f, 0.5f);
+                }
+            }
 
             // Wave sayacı: her peakSteps stage'de bir tepe görülür (artan fazın sonu)
             // Bu sadece debug/presentasyon için.

@@ -88,6 +88,11 @@ public class MainMenu : MonoBehaviour
 		{
 			BackgroundMusic.Instance.SetVolume(value);
 		}
+		
+		if (AmbientSound.Instance != null)
+		{
+			AmbientSound.Instance.SetVolume(value);
+		}
 	}
 
 	private void ApplySFXVolume(float value)

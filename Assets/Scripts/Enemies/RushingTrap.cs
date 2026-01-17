@@ -32,6 +32,8 @@ public class RushingTrap : MonoBehaviour
     [SerializeField] private int damage = 1;
 
     private Vector2 startPosition;
+    private Vector2 startLocalPosition; // Dönüş için local referans
+    private Transform parentTransform;  // Dönüş için parent referans
     private Vector2 rushDirection;
     private Rigidbody2D rb;
 
@@ -70,6 +72,17 @@ public class RushingTrap : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
         startPosition = transform.position;
+        
+        // Parent ve local pozisyonu kaydet (Dünya döndüğünde doğru yere dönmek için)
+        parentTransform = transform.parent;
+        if (parentTransform != null)
+        {
+            startLocalPosition = transform.localPosition;
+        }
+        else
+        {
+            Debug.LogWarning($"RushingTrap '{name}' bir parent objeye sahip değil! Dünya döndüğünde pozisyonu kayabilir.");
+        }
 
         baseRushSpeed = rushSpeed;
         baseReturnSpeed = returnSpeed;
@@ -158,17 +171,28 @@ public class RushingTrap : MonoBehaviour
             animator.SetTrigger("Warning");
     }
 
+    // Yardımcı property: Şu anki geçerli başlangıç pozisyonunu döndürür
+    private Vector2 CurrentStartPosition
+    {
+        get
+        {
+            if (parentTransform != null)
+                return parentTransform.TransformPoint(startLocalPosition);
+            return startPosition;
+        }
+    }
+
     private void HandleWarning()
     {
         stateTimer -= Time.deltaTime;
 
         // Titreme efekti - yerçekimine dik yönde (rush yönünde) titre
         float shake = Mathf.Sin(Time.time * 50f) * 0.05f;
-        transform.position = startPosition + rushDirection * shake;
+        transform.position = CurrentStartPosition + rushDirection * shake;
 
         if (stateTimer <= 0)
         {
-            transform.position = startPosition;
+            transform.position = CurrentStartPosition;
             StartRush();
         }
     }
@@ -192,7 +216,7 @@ public class RushingTrap : MonoBehaviour
         desiredVelocity = rushDirection * (baseRushSpeed * speedMultiplier);
 
         // Maksimum mesafe kontrolü
-        float distanceFromStart = Vector2.Distance(transform.position, startPosition);
+        float distanceFromStart = Vector2.Distance(transform.position, CurrentStartPosition);
         if (distanceFromStart >= maxRushDistance)
         {
             StartReturning();
@@ -215,7 +239,8 @@ public class RushingTrap : MonoBehaviour
 
     private void HandleReturning()
     {
-        Vector2 direction = (startPosition - (Vector2)transform.position).normalized;
+        Vector2 targetPos = CurrentStartPosition;
+        Vector2 direction = (targetPos - (Vector2)transform.position).normalized;
 
         float speedMultiplier = 1f;
         if (ProgressionManager.Instance != null)
@@ -223,9 +248,9 @@ public class RushingTrap : MonoBehaviour
 
         desiredVelocity = direction * (baseReturnSpeed * speedMultiplier);
 
-        if (Vector2.Distance(transform.position, startPosition) < 0.1f)
+        if (Vector2.Distance(transform.position, targetPos) < 0.1f)
         {
-            transform.position = startPosition;
+            transform.position = targetPos;
             desiredVelocity = Vector2.zero;
             if (rb != null)
                 rb.linearVelocity = Vector2.zero;

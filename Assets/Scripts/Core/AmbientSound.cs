@@ -4,6 +4,8 @@ using UnityEngine;
 [RequireComponent(typeof(AudioLowPassFilter))]
 public class AmbientSound : MonoBehaviour
 {
+    public static AmbientSound Instance;
+
     [Header("Audio Settings")]
     [SerializeField] private AudioClip forestAmbienceClip;
     [Range(0f, 1f)]
@@ -23,6 +25,9 @@ public class AmbientSound : MonoBehaviour
 
     private void Awake()
     {
+        if (Instance == null)
+            Instance = this;
+            
         // Componentleri al
         audioSource = GetComponent<AudioSource>();
         lowPassFilter = GetComponent<AudioLowPassFilter>();
@@ -31,7 +36,10 @@ public class AmbientSound : MonoBehaviour
         audioSource.clip = forestAmbienceClip;
         audioSource.loop = true;
         audioSource.playOnAwake = true;
-        audioSource.volume = baseVolume;
+        
+        // Kaydedilen ses ayarını yükle
+        float savedVolume = PlayerPrefs.GetFloat("MusicVolume", baseVolume);
+        audioSource.volume = savedVolume;
         
         // Başlangıçta net duyulsun
         audioSource.pitch = normalPitch;
@@ -39,6 +47,14 @@ public class AmbientSound : MonoBehaviour
 
         if (forestAmbienceClip != null && !audioSource.isPlaying)
             audioSource.Play();
+    }
+
+    public void SetVolume(float volume)
+    {
+        if (audioSource != null)
+        {
+            audioSource.volume = volume;
+        }
     }
 
     private void OnValidate()
