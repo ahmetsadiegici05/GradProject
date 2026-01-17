@@ -38,6 +38,7 @@ public class TimeSlowAbility : MonoBehaviour
     
     public bool IsSlowMotionActive => isSlowMotionActive;
     public float CooldownProgress => cooldownTimer <= 0 ? 1f : 1f - (cooldownTimer / cooldownTime);
+    public float CooldownRemaining => cooldownTimer;  // Kalan saniye
     public bool IsReady => cooldownTimer <= 0f && !isSlowMotionActive;
     
     /// <summary>
@@ -213,21 +214,4 @@ public class TimeSlowAbility : MonoBehaviour
         }
     }
 
-    // Debug GUI
-    private void OnGUI()
-    {
-        if (ScreenshotMode.IsHudHidden) return;
-
-        GUILayout.BeginArea(new Rect(Screen.width - 220, 10, 200, 80));
-        GUILayout.Box("Time Slow Ability");
-        
-        if (isSlowMotionActive)
-            GUILayout.Label("STATUS: ACTIVE");
-        else if (IsReady)
-            GUILayout.Label("STATUS: READY [E]");
-        else
-            GUILayout.Label($"COOLDOWN: {cooldownTimer:0.0}s");
-        
-        GUILayout.EndArea();
-    }
 }

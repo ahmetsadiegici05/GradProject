@@ -19,10 +19,52 @@ public class EnemyHealth : MonoBehaviour
     private float currentHealth;
     private bool dead;
     private SpriteRenderer spriteRenderer;
+    private string uniqueID;
+    
+    public bool IsDead => dead;
 
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
+        
+        // Unique ID oluştur (sahne içi pozisyon + isim bazlı)
+        uniqueID = GenerateUniqueID();
+    }
+    
+    private void Start()
+    {
+        // Checkpoint'te bu düşman ölü olarak kaydedildiyse, devre dışı bırak
+        if (CheckpointData.HasCheckpoint && CheckpointData.IsEnemyDead(uniqueID))
+        {
+            dead = true;
+            gameObject.SetActive(false);
+        }
+    }
+    
+    /// <summary>
+    /// Düşman için benzersiz ID üret (pozisyon + isim bazlı)
+    /// </summary>
+    public string GetUniqueID()
+    {
+        if (string.IsNullOrEmpty(uniqueID))
+            uniqueID = GenerateUniqueID();
+        return uniqueID;
+    }
+    
+    private string GenerateUniqueID()
+    {
+        // Sahne içi hierarchy path + başlangıç pozisyonu kullan
+        // Bu, her düşmanı benzersiz şekilde tanımlar
+        Transform t = transform;
+        string path = t.name;
+        while (t.parent != null)
+        {
+            t = t.parent;
+            path = t.name + "/" + path;
+        }
+        // Başlangıç pozisyonunu da ekle (aynı isimli düşmanları ayırt etmek için)
+        Vector3 pos = transform.position;
+        return $"{path}_{pos.x:F1}_{pos.y:F1}";
     }
 
     private void OnEnable()

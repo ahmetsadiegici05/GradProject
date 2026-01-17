@@ -162,4 +162,17 @@ public class CameraController : MonoBehaviour
     {
         currentRoomPos = _newRoom.position;
     }
+    
+    /// <summary>
+    /// Kamerayı anında oyuncuya taşı (checkpoint/respawn için)
+    /// </summary>
+    public void SnapToPlayer()
+    {
+        if (player == null) return;
+        
+        internalPosition = new Vector3(player.position.x, player.position.y, internalPosition.z);
+        transform.position = internalPosition;
+        lookAhead = 0f;
+        velocity = Vector3.zero;
+    }
 }

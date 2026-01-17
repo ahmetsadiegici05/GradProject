@@ -9,7 +9,7 @@ public class AmbientSound : MonoBehaviour
     [Header("Audio Settings")]
     [SerializeField] private AudioClip forestAmbienceClip;
     [Range(0f, 1f)]
-    [SerializeField] private float baseVolume = 0.4f;
+    [SerializeField] private float baseVolume = 0.7f;  // Varsayılan ses seviyesi artırıldı
 
     [Header("Time Slow Effect")]
     [SerializeField] private float smoothSpeed = 3.0f; // Geçiş hızı

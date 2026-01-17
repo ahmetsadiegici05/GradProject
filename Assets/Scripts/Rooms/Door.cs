@@ -52,8 +52,11 @@ public class Door : MonoBehaviour
 
             cam.MoveToNewRoom(nextRoom);
 
-            if (WorldRotationManager.Instance != null)
+            // Deprem sesi sadece ileri giderken ve eğim değişecekse çalsın
+            if (triggerRotation && !hasTriggeredRotation && WorldRotationManager.Instance != null)
+            {
                 WorldRotationManager.Instance.TriggerRoomTransitionShake();
+            }
 
             if (triggerRotation && !hasTriggeredRotation && ProgressionManager.Instance != null)
             {
@@ -74,8 +77,7 @@ public class Door : MonoBehaviour
 
             cam.MoveToNewRoom(previousRoom);
 
-            if (WorldRotationManager.Instance != null)
-                WorldRotationManager.Instance.TriggerRoomTransitionShake();
+            // Geri giderken deprem sesi ÇALMASIN
 
             if (debugLogs)
                 Debug.Log($"Door '{name}': PREVIOUS room -> {previousRoom.name}");

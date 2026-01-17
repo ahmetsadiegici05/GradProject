@@ -35,6 +35,9 @@ public class Checkpoint : MonoBehaviour
             if (unlockSpikeheadShooting)
                 CheckpointData.SpikeheadShootingUnlocked = true;
             
+            // Ölen düşmanları kaydet
+            CheckpointData.SaveDeadEnemies();
+            
             // Görsel geri bildirim (Rengi değiştir)
             if (spriteRenderer != null)
                 spriteRenderer.color = activeColor;

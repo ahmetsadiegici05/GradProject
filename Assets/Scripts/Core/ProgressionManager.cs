@@ -117,18 +117,8 @@ public class ProgressionManager : MonoBehaviour
 
             if (WorldRotationManager.Instance != null && Mathf.Abs(delta) > 0.01f)
             {
-                // Stage 0 -> 1 geçişinde (ilk eğim) daha güçlü bir deprem efekti ver
-                if (stageIndex == 1)
-                {
-                    // Büyük deprem: Uzun süreli ve şiddetli
-                    WorldRotationManager.Instance.RotateByAngle(delta, 0.2f, 1.5f);
-                }
-                else
-                {
-                    // Diğer geçişler: Kontrollü sarsıntı (Ekran dışına taşırmayan, mekaniği bozmayan)
-                    // Intensity 0.08 (Hafif), Duration 0.5 (Kısa)
-                    WorldRotationManager.Instance.RotateByAngle(delta, 0.08f, 0.5f);
-                }
+                // Her geçişte güçlü deprem (Duration: 1.5s, Intensity: 0.2f)
+                WorldRotationManager.Instance.RotateByAngle(delta, 0.2f, 1.5f);
             }
 
             // Wave sayacı: her peakSteps stage'de bir tepe görülür (artan fazın sonu)
@@ -215,27 +205,5 @@ public class ProgressionManager : MonoBehaviour
     {
         if (enablePlayerScaling && playerMovement != null)
             playerMovement.SetMovementMultipliers(currentPlayerSpeedMultiplier, currentPlayerJumpMultiplier);
-    }
-
-    private void OnGUI()
-    {
-        if (ScreenshotMode.IsHudHidden) return;
-
-        // Debug hızlı test
-        GUILayout.BeginArea(new Rect(10, 170, 240, 180));
-        GUILayout.Label($"Stage: {stageIndex} | Wave: {currentWave}");
-        GUILayout.Label($"Tilt: {currentTiltSignedDegrees:0.0}° (max {maxTiltDegrees}°)");
-        GUILayout.Label($"Speed x{currentTrapSpeedMultiplier:0.00}");
-        GUILayout.Label($"PlayerSpeed x{currentPlayerSpeedMultiplier:0.00}");
-        if (enableTimeScale)
-            GUILayout.Label($"TimeScale: {Time.timeScale:0.00}");
-
-        if (GUILayout.Button("Advance Stage"))
-            AdvanceStage();
-
-        if (GUILayout.Button("Reset Progression"))
-            ResetProgression();
-
-        GUILayout.EndArea();
     }
 }

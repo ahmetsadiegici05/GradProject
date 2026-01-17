@@ -5,6 +5,8 @@ using TMPro;
 
 public class UIManager : MonoBehaviour
 {
+    public static UIManager Instance { get; private set; }
+    
     [Header("Game Over")]
     [SerializeField] private GameObject gameOverScreen;
     [SerializeField] private TextMeshProUGUI distanceText;
@@ -23,9 +25,14 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Slider sfxSlider;
 
     private bool isPaused;
+    
+    // Public property'ler
+    public bool IsPaused => isPaused;
+    public bool IsGameOver => gameOverScreen != null && gameOverScreen.activeSelf;
 
     private void Awake()
     {
+        Instance = this;
         Time.timeScale = 1f;
         isPaused = false;
 

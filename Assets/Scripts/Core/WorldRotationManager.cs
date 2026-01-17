@@ -353,20 +353,4 @@ public class WorldRotationManager : MonoBehaviour
         if (rotateGravity)
             Physics2D.gravity = RotateVector(Vector2.down * gravityMagnitude, currentRotationAngle);
     }
-
-    // Debug için
-    private void OnGUI()
-    {
-        if (ScreenshotMode.IsHudHidden) return;
-        if (!debugMode) return;
-
-        GUILayout.BeginArea(new Rect(10, 10, 200, 100));
-        GUILayout.Label($"Rotation: {currentRotationAngle:F1}°");
-        GUILayout.Label($"Gravity: {Physics2D.gravity}");
-        
-        if (GUILayout.Button("Reset"))
-            ResetRotation();
-        
-        GUILayout.EndArea();
-    }
 }

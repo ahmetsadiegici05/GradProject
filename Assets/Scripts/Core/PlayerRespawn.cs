@@ -7,9 +7,7 @@ public class PlayerRespawn : MonoBehaviour
         // Eğer daha önce bir checkpoint alındıysa, oyuncuyu oraya taşı
         if (CheckpointData.HasCheckpoint)
         {
-            transform.position = CheckpointData.LastCheckpointPosition;
-
-            // Progression / rotation geri yükle
+            // ÖNCE dünya rotasyonunu yükle (yerçekimi değişir)
             if (ProgressionManager.Instance != null && CheckpointData.HasProgressionState)
             {
                 ProgressionManager.Instance.LoadFromCheckpoint(
@@ -17,11 +15,40 @@ public class PlayerRespawn : MonoBehaviour
                     CheckpointData.SavedWorldAngleDegrees
                 );
             }
+            
+            // SONRA oyuncu pozisyonunu ayarla
+            transform.position = CheckpointData.LastCheckpointPosition;
+            
+            // Kamerayı anında oyuncuya taşı
+            CameraController cam = FindFirstObjectByType<CameraController>();
+            if (cam != null)
+            {
+                cam.SnapToPlayer();
+            }
+            
+            // KillOnFall referans noktasını güncelle (rotation'dan SONRA)
+            KillOnFall killOnFall = GetComponent<KillOnFall>();
+            if (killOnFall != null)
+            {
+                // Bir frame bekle ki fizik güncellensń
+                StartCoroutine(DelayedResetFallTracking(killOnFall));
+            }
         }
-
-        // KillOnFall referans noktasını güncelle
-        KillOnFall killOnFall = GetComponent<KillOnFall>();
-        if (killOnFall != null)
-            killOnFall.ResetFallTracking();
+        else
+        {
+            // Checkpoint yoksa sadece KillOnFall'u resetle
+            KillOnFall killOnFall = GetComponent<KillOnFall>();
+            if (killOnFall != null)
+                killOnFall.ResetFallTracking();
+        }
+    }
+    
+    private System.Collections.IEnumerator DelayedResetFallTracking(KillOnFall killOnFall)
+    {
+        // Bir frame bekle ki fizik ve pozisyonlar güncellensin
+        yield return null;
+        yield return new WaitForFixedUpdate();
+        
+        killOnFall.ResetFallTracking();
     }
 }

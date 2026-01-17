@@ -192,10 +192,11 @@ MonoBehaviour:
   returnSpeed: 5
   warningSound: {fileID: 0}
   spriteRenderer: {fileID: 4135386473618554209}
-  normalColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
-  warningColor: {r: 1, g: 0, b: 0, a: 1}
+  normalColor: {r: 1, g: 0, b: 0, a: 1}
+  warningColor: {r: 0.20000002, g: 0.20000002, b: 0.20000002, a: 1}
   animator: {fileID: 0}
   damage: 1
+  pauseDuringWorldRotation: 1
 --- !u!114 &7774922849652215625
 MonoBehaviour:
   m_ObjectHideFlags: 0
