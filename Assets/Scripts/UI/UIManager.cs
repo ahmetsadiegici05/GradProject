@@ -43,6 +43,9 @@ public class UIManager : MonoBehaviour
 
     public void GameOver()
     {
+        if (SoundManager.instance != null)
+            SoundManager.instance.PlaySound(SoundManager.instance.loseSound);
+
         // Skor takibini durdur ve istatistikleri göster
         if (ScoreManager.Instance != null)
         {

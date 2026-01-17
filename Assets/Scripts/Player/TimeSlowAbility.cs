@@ -93,9 +93,13 @@ public class TimeSlowAbility : MonoBehaviour
     {
         isSlowMotionActive = true;
 
-        // Ses efekti
-        if (activateSound != null)
-            activateSound.Play();
+        // SoundManager Integration
+        if (SoundManager.instance != null)
+            SoundManager.instance.StartTimeSlowSequence();
+
+        // Ses efekti (Eski kod iptal)
+        /*if (activateSound != null)
+            activateSound.Play();*/
 
         // Zaman yavaşlat
         Time.timeScale = slowMotionScale;
@@ -130,9 +134,13 @@ public class TimeSlowAbility : MonoBehaviour
         if (useVisualEffects)
             ApplySlowMotionVisuals(false);
 
-        // Ses efekti
-        if (deactivateSound != null)
-            deactivateSound.Play();
+        // SoundManager Stop Logic
+        if (SoundManager.instance != null)
+            SoundManager.instance.StopTimeSlowSequence();
+
+        // Ses efekti (Eski kod iptal)
+        /*if (deactivateSound != null)
+            deactivateSound.Play();*/
 
         isSlowMotionActive = false;
         cooldownTimer = cooldownTime;
@@ -208,6 +216,8 @@ public class TimeSlowAbility : MonoBehaviour
     // Debug GUI
     private void OnGUI()
     {
+        if (ScreenshotMode.IsHudHidden) return;
+
         GUILayout.BeginArea(new Rect(Screen.width - 220, 10, 200, 80));
         GUILayout.Box("Time Slow Ability");
         

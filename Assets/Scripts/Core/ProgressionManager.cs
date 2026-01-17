@@ -206,6 +206,8 @@ public class ProgressionManager : MonoBehaviour
 
     private void OnGUI()
     {
+        if (ScreenshotMode.IsHudHidden) return;
+
         // Debug hızlı test
         GUILayout.BeginArea(new Rect(10, 170, 240, 180));
         GUILayout.Label($"Stage: {stageIndex} | Wave: {currentWave}");

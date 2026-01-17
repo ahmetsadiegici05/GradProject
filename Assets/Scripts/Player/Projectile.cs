@@ -55,6 +55,9 @@ public class Projectile : MonoBehaviour
         hit = true;
         boxCollider.enabled = false;
         anim.SetTrigger("explode");
+
+        if (SoundManager.instance != null)
+            SoundManager.instance.PlaySound(SoundManager.instance.explosionSound);
     }
     
     /// <summary>

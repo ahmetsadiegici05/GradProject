@@ -43,11 +43,17 @@ public class Health : MonoBehaviour
         {
             anim.SetTrigger("hurt");
             StartCoroutine(Invunerability());
+
+            if (SoundManager.instance != null)
+                SoundManager.instance.PlaySound(SoundManager.instance.hurtSound);
         }
         else
         {
             if (!dead)
             {
+                if (SoundManager.instance != null)
+                    SoundManager.instance.PlaySound(SoundManager.instance.deathSound);
+
                 anim.SetTrigger("die");
                 GetComponent<PlayerMovement>().enabled = false;
                 dead = true;
@@ -60,6 +66,9 @@ public class Health : MonoBehaviour
     public void AddHealth(float _value)
     {
         currentHealth = Mathf.Clamp(currentHealth + _value, 0, startingHealth);
+
+        if (_value > 0 && SoundManager.instance != null)
+            SoundManager.instance.PlaySound(SoundManager.instance.healSound);
     }
     private IEnumerator Invunerability()
     {

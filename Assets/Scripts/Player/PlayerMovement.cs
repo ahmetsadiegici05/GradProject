@@ -22,7 +22,12 @@ public class PlayerMovement : MonoBehaviour
 
     private float speedMultiplier = 1f;
     private float jumpMultiplier = 1f;
-    
+    private bool wasGrounded;
+
+    // Step Sound
+    private float stepTimer;
+    [SerializeField] private float stepInterval = 0.35f;
+
     // Time slow kompansasyonu için
     // Tam kompansasyon (1/timeScale) çok agresif olur çünkü fizik de yavaşlıyor
     // Sqrt kullanarak daha dengeli bir his elde ediyoruz
@@ -100,6 +105,14 @@ public class PlayerMovement : MonoBehaviour
         anim.SetBool("Run", Mathf.Abs(rawHorizontalInput) > 0.01f && groundedForAnim);
         anim.SetBool("grounded", groundedForAnim);
 
+        // Landing Sound
+        if (groundedForAnim && !wasGrounded)
+        {
+            if (SoundManager.instance != null)
+                SoundManager.instance.PlaySound(SoundManager.instance.landSound);
+        }
+        wasGrounded = groundedForAnim;
+
         if (wallJumpCooldown > 0.2f)
         {
             if (isRotatingWorld)
@@ -115,6 +128,27 @@ public class PlayerMovement : MonoBehaviour
             Vector2 fallVelocity = gravityDir * fallSpeed;
             
             body.linearVelocity = moveVelocity + fallVelocity;
+
+            // Step Sound Logic
+            if ((groundedForAnim) && Mathf.Abs(horizontalInput) > 0.01f)
+            {
+                // Dinamik Hız: speedMultiplier arttıkça adım sıklaşır
+                float currentMultiplier = speedMultiplier > 0.1f ? speedMultiplier : 1f;
+                float dynamicInterval = stepInterval / currentMultiplier;
+
+                stepTimer -= Time.deltaTime * TimeCompensation;
+                if (stepTimer <= 0)
+                {
+                    if (SoundManager.instance != null)
+                        SoundManager.instance.PlayStepSound();
+                    
+                    stepTimer = dynamicInterval;
+                }
+            }
+            else
+            {
+                stepTimer = 0.05f;
+            }
 
             // Wall slide
             if (touchingWall && !grounded && horizontalInput != 0)
@@ -159,6 +193,9 @@ public class PlayerMovement : MonoBehaviour
             float horizontalSpeed = Vector2.Dot(body.linearVelocity, rightDir);
             body.linearVelocity = rightDir * horizontalSpeed + upDir * effectiveJumpPower;
             anim.SetTrigger("jump");
+
+            if (SoundManager.instance != null)
+                SoundManager.instance.PlaySound(SoundManager.instance.jumpSound);
         }
         else if (touchingWall && !grounded)
         {
@@ -168,6 +205,9 @@ public class PlayerMovement : MonoBehaviour
 
             ApplyFacingScale(direction);
             wallJumpCooldown = 0;
+
+            if (SoundManager.instance != null)
+                SoundManager.instance.PlaySound(SoundManager.instance.jumpSound);
         }
     }
 

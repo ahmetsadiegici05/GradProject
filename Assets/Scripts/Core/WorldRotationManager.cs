@@ -187,6 +187,9 @@ public class WorldRotationManager : MonoBehaviour
             return;
 
         TriggerShakeFromCore(transitionShakeIntensity, transitionShakeDuration);
+
+        if (SoundManager.instance != null)
+            SoundManager.instance.PlaySound(SoundManager.instance.earthquakeSound);
     }
 
     private void TriggerShakeFromCore(float intensity, float duration)
@@ -347,6 +350,7 @@ public class WorldRotationManager : MonoBehaviour
     // Debug için
     private void OnGUI()
     {
+        if (ScreenshotMode.IsHudHidden) return;
         if (!debugMode) return;
 
         GUILayout.BeginArea(new Rect(10, 10, 200, 100));

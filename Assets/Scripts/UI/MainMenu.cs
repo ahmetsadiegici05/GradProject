@@ -8,6 +8,14 @@ public class MainMenu : MonoBehaviour
 	[Header("Navigation")]
 	[SerializeField] private Button firstSelectedButton;
 
+	[Header("Panels")]
+	[SerializeField] private GameObject leaderboardPanel;
+	[SerializeField] private GameObject menuContainer;
+
+	[Header("Audio Settings")]
+	[SerializeField] private Slider musicSlider;
+	[SerializeField] private Slider sfxSlider;
+
 	[Header("Selection Colors")]
 	[SerializeField] private Color normalColor = new Color(1f, 1f, 1f, 1f);
 	[SerializeField] private Color highlightedColor = new Color(0.6f, 0.6f, 0.6f, 1f);
@@ -16,7 +24,11 @@ public class MainMenu : MonoBehaviour
 
 	private void Start()
 	{
+		if (leaderboardPanel != null)
+			leaderboardPanel.SetActive(false);
+			
 		SetupButtons();
+		SetupAudio();
 		SelectFirstButton();
 
 		Cursor.visible = true;
@@ -35,6 +47,55 @@ public class MainMenu : MonoBehaviour
 	{
 		LeaderboardData.ClearLeaderboard();
 		Debug.Log("Leaderboard temizlendi!");
+	}
+
+	private void SetupAudio()
+	{
+		if (musicSlider != null)
+		{
+			float savedMusic = PlayerPrefs.GetFloat("MusicVolume", 0.5f);
+			musicSlider.value = savedMusic;
+			ApplyMusicVolume(savedMusic);
+			musicSlider.onValueChanged.AddListener(OnMusicVolumeChanged);
+		}
+
+		if (sfxSlider != null)
+		{
+			float savedSFX = PlayerPrefs.GetFloat("SFXVolume", 1f);
+			sfxSlider.value = savedSFX;
+			ApplySFXVolume(savedSFX);
+			sfxSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
+		}
+	}
+
+	public void OnMusicVolumeChanged(float value)
+	{
+		ApplyMusicVolume(value);
+		PlayerPrefs.SetFloat("MusicVolume", value);
+		PlayerPrefs.Save();
+	}
+
+	public void OnSFXVolumeChanged(float value)
+	{
+		ApplySFXVolume(value);
+		PlayerPrefs.SetFloat("SFXVolume", value);
+		PlayerPrefs.Save();
+	}
+
+	private void ApplyMusicVolume(float value)
+	{
+		if (BackgroundMusic.Instance != null)
+		{
+			BackgroundMusic.Instance.SetVolume(value);
+		}
+	}
+
+	private void ApplySFXVolume(float value)
+	{
+		if (SoundManager.instance != null)
+		{
+			SoundManager.instance.SetVolume(value);
+		}
 	}
 
 	private void SetupButtons()
@@ -59,6 +120,39 @@ public class MainMenu : MonoBehaviour
 		{
 			EventSystem.current.SetSelectedGameObject(null);
 			EventSystem.current.SetSelectedGameObject(firstSelectedButton.gameObject);
+		}
+	}
+
+	private void Update()
+	{
+		if (leaderboardPanel != null && leaderboardPanel.activeSelf)
+		{
+			if (Input.GetKeyDown(KeyCode.Escape))
+			{
+				CloseLeaderboard();
+			}
+		}
+	}
+
+	public void OpenLeaderboard()
+	{
+		if (leaderboardPanel != null)
+		{
+			leaderboardPanel.SetActive(true);
+			if (menuContainer != null)
+				menuContainer.SetActive(false);
+		}
+	}
+
+	public void CloseLeaderboard()
+	{
+		if (leaderboardPanel != null)
+		{
+			leaderboardPanel.SetActive(false);
+			if (menuContainer != null)
+				menuContainer.SetActive(true);
+			
+			SelectFirstButton();
 		}
 	}
 

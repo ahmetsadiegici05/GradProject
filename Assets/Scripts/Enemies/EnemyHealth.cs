@@ -70,6 +70,9 @@ public class EnemyHealth : MonoBehaviour
     {
         dead = true;
 
+        if (SoundManager.instance != null)
+            SoundManager.instance.PlaySound(SoundManager.instance.enemyDeathSound);
+
         // Skor sistemine bildir
         if (ScoreManager.Instance != null)
         {
