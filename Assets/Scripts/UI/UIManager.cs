@@ -72,6 +72,12 @@ public class UIManager : MonoBehaviour
         if (gameOverScreen != null)
             gameOverScreen.SetActive(true);
 
+        // Debug Display'i gizle
+        if (StageDebugDisplay.Instance != null)
+        {
+            StageDebugDisplay.Instance.ResetUI();
+        }
+
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 

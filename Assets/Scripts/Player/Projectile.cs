@@ -36,12 +36,10 @@ public class Projectile : MonoBehaviour
         if (hit)
             return;
 
-        // Door'lardan geç, yok olma
-        if (collision.GetComponent<Door>() != null)
-            return;
-
-        // Can collectible'lerinden geç, yok olma
-        if (collision.GetComponent<HealthCollectible>() != null)
+        // --- GENEL FIX: Trigger olan objelerin icinden gec (Eger dusman degilse) ---
+        // Kapi, Checkpoint, Collectible, vs. hepsi trigger oldugu icin bunlari tek satirda cozeriz.
+        // Boylece mermi sadece "kati" objelere (Duvar, Zemin) veya "Dusmanlara" carpinca patlar.
+        if (collision.isTrigger && collision.GetComponent<EnemyHealth>() == null) 
             return;
 
         // Ekran dışındaysa hasar verme

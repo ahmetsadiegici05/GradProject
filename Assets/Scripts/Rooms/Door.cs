@@ -10,8 +10,12 @@ public class Door : MonoBehaviour
     [Tooltip("Bu kapıdan geçince eğim/zorluk artsın mı?")]
     [SerializeField] private bool triggerRotation = false;
     [SerializeField] private bool debugLogs = false;
+    
+    [Header("Enhancements")]
+    [SerializeField] private RockSpawner[] connectedSpawners; // Bu kapi tetiklenince calisacak spawnler
 
     private bool hasTriggeredRotation = false;
+    private bool hasTriggeredTrap = false; // Tuzagin yalnizca bir kez calismasi icin
 
     private void Awake()
     {
@@ -58,6 +62,13 @@ public class Door : MonoBehaviour
                 WorldRotationManager.Instance.TriggerRoomTransitionShake();
             }
 
+            // --- YENI: Kapidan gecince RockSpawner'lari calistir (SADECE ILK GECISTE) ---
+            if (connectedSpawners != null && connectedSpawners.Length > 0 && !hasTriggeredTrap)
+            {
+                hasTriggeredTrap = true; // Tek seferlik isaretle
+                StartCoroutine(TriggerTrapSequence());
+            }
+
             if (triggerRotation && !hasTriggeredRotation && ProgressionManager.Instance != null)
             {
                 ProgressionManager.Instance.AdvanceStage();
@@ -81,6 +92,34 @@ public class Door : MonoBehaviour
 
             if (debugLogs)
                 Debug.Log($"Door '{name}': PREVIOUS room -> {previousRoom.name}");
+        }
+    }
+
+    private System.Collections.IEnumerator TriggerTrapSequence()
+    {
+        // 1. Yaziyi goster (HEMEN - UYARI)
+        if (StageDebugDisplay.Instance != null)
+        {
+            StageDebugDisplay.Instance.ShowAnnouncement("EARTHQUAKE");
+        }
+
+        // 2. Ekrani salla (HEMEN - Sarsinti baslasin)
+        // triggerRotation zaten true ise yukarida calmistir, degilse biz calalim
+        if (WorldRotationManager.Instance != null && !triggerRotation)
+        {
+            WorldRotationManager.Instance.TriggerRoomTransitionShake();
+        }
+
+        // 3. Bekle (Oyuncuya kacma/pozisyon alma sansi ver)
+        yield return new WaitForSeconds(1.5f); // 1.5 saniye mühlet
+
+        // 4. Taslari dusur (GERCEK TEHLIKE)
+        if (connectedSpawners != null)
+        {
+            foreach (var spawner in connectedSpawners)
+            {
+                if (spawner != null) spawner.ForceStartSpawning();
+            }
         }
     }
 }

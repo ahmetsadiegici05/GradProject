@@ -24,15 +24,24 @@ public class ProgressionManager : MonoBehaviour
 
     [Header("Speed Scaling (Sürekli Artar)")]
     [SerializeField] private bool enableSpeedScaling = true;
-    [SerializeField] private float speedStep = 0.015f;            // %1.5 her stage
-    [SerializeField] private float maxSpeedMultiplier = 1.5f;     // Max %50 hızlanma
+    [SerializeField] private float speedStep = 0.05f;            // Onceki %1.5 -> Simdi %5 her stage
+    [SerializeField] private float maxSpeedMultiplier = 2.5f;     // Onceki 1.5 -> Simdi 2.5 (Max %150)
+    
+    [Tooltip("Wawe başına ekstra zorluk çarpanı")]
+    [SerializeField] private float waveDifficultyMultiplier = 0.1f; 
 
     [Header("Player Scaling")]
     [SerializeField] private bool enablePlayerScaling = true;
-    [SerializeField] private float playerSpeedStep = 0.02f; // %2
-    [SerializeField] private float playerJumpStep = 0.01f;  // %1
-    [SerializeField] private float maxPlayerSpeedMultiplier = 1.06f; // max %6
-    [SerializeField] private float maxPlayerJumpMultiplier = 1.04f;  // max %4
+    [SerializeField] private float playerSpeedStep = 0.03f; // Onceki %2 -> Simdi %3
+    [SerializeField] private float playerJumpStep = 0.015f;  // Onceki %1 -> Simdi %1.5
+    [SerializeField] private float maxPlayerSpeedMultiplier = 1.25f; // Onceki 1.06 -> Simdi 1.25
+    [SerializeField] private float maxPlayerJumpMultiplier = 1.15f;  // Onceki 1.04 -> Simdi 1.15
+
+    [Header("Camera Scaling")]
+    [SerializeField] private bool enableCameraScaling = true;
+    [SerializeField] private float baseCameraSize = 7f;
+    [SerializeField] private float cameraSizeStep = 0.15f; // Her stage biraz uzaklaşır
+    [SerializeField] private float maxCameraSize = 9.5f;
 
     [Header("Game Speed (Optional)")]
     [SerializeField] private bool enableTimeScale = false;
@@ -41,11 +50,13 @@ public class ProgressionManager : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private PlayerMovement playerMovement;
+    [SerializeField] private CameraController cameraController;
 
     private float currentTiltSignedDegrees = 0f;
     private float currentPlayerSpeedMultiplier = 1f;
     private float currentPlayerJumpMultiplier = 1f;
     private float currentTrapSpeedMultiplier = 1f;
+    private float currentCameraSize = 7f;
     private int currentWave = 0;                                  // Hangi dalgadayız
 
     private float baseFixedDeltaTime;
@@ -78,6 +89,14 @@ public class ProgressionManager : MonoBehaviour
             if (playerObj != null)
                 playerMovement = playerObj.GetComponent<PlayerMovement>();
         }
+
+        if (cameraController == null)
+        {
+            cameraController = FindObjectOfType<CameraController>();
+        }
+        
+        // Initial setup
+        currentCameraSize = baseCameraSize;
 
         // Checkpoint varsa oradan yükle, yoksa sıfırdan başla
         if (CheckpointData.HasProgressionState)
@@ -129,13 +148,26 @@ public class ProgressionManager : MonoBehaviour
         // Hız SÜREKLİ artar (dalga sıfırlamaz)
         if (enableSpeedScaling)
         {
-            currentTrapSpeedMultiplier = Mathf.Min(maxSpeedMultiplier, 1f + stageIndex * speedStep);
+            // Hiz formulu: (1 + stage * 0.05) + (wave * 0.1)
+            float baseSpeed = 1f + (stageIndex * speedStep);
+            float waveBonus = currentWave * waveDifficultyMultiplier;
+            currentTrapSpeedMultiplier = Mathf.Min(maxSpeedMultiplier, baseSpeed + waveBonus);
         }
 
         if (enablePlayerScaling)
         {
             currentPlayerSpeedMultiplier = Mathf.Min(maxPlayerSpeedMultiplier, 1f + stageIndex * playerSpeedStep);
             currentPlayerJumpMultiplier = Mathf.Min(maxPlayerJumpMultiplier, 1f + stageIndex * playerJumpStep);
+        }
+
+        if (enableCameraScaling)
+        {
+            float targetSize = baseCameraSize + (stageIndex * cameraSizeStep);
+            
+            // Wave basina ekstra zoom-out (daha hizli oldugu icin daha genis gorus lazim)
+            targetSize += currentWave * 0.5f; 
+            
+            currentCameraSize = Mathf.Min(maxCameraSize, targetSize);
         }
 
         if (enableTimeScale)
@@ -146,6 +178,12 @@ public class ProgressionManager : MonoBehaviour
         }
 
         ApplyAll();
+        
+        // Debug ve Sunum gorsellestirme
+        if (StageDebugDisplay.Instance != null)
+        {
+            StageDebugDisplay.Instance.TriggerStageChangeEffect(stageIndex);
+        }
         
         Debug.Log($"Stage {stageIndex} | Wave {currentWave} | Tilt: {currentTiltSignedDegrees:F1}° | Speed: x{currentTrapSpeedMultiplier:F2}");
     }
@@ -159,6 +197,13 @@ public class ProgressionManager : MonoBehaviour
         {
             currentPlayerSpeedMultiplier = Mathf.Min(maxPlayerSpeedMultiplier, 1f + stageIndex * playerSpeedStep);
             currentPlayerJumpMultiplier = Mathf.Min(maxPlayerJumpMultiplier, 1f + stageIndex * playerJumpStep);
+        }
+
+        if (enableCameraScaling)
+        {
+            float targetSize = baseCameraSize + (stageIndex * cameraSizeStep);
+            targetSize += currentWave * 0.5f; 
+            currentCameraSize = Mathf.Min(maxCameraSize, targetSize);
         }
 
         if (enableSpeedScaling)
@@ -188,6 +233,7 @@ public class ProgressionManager : MonoBehaviour
         currentPlayerSpeedMultiplier = 1f;
         currentPlayerJumpMultiplier = 1f;
         currentTrapSpeedMultiplier = 1f;
+        currentCameraSize = baseCameraSize;
 
         if (enableTimeScale)
         {
@@ -205,5 +251,10 @@ public class ProgressionManager : MonoBehaviour
     {
         if (enablePlayerScaling && playerMovement != null)
             playerMovement.SetMovementMultipliers(currentPlayerSpeedMultiplier, currentPlayerJumpMultiplier);
+
+        if (enableCameraScaling && cameraController != null)
+        {
+            cameraController.SetZoom(currentCameraSize);
+        }
     }
 }

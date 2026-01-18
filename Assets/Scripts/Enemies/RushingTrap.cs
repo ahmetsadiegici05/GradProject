@@ -246,7 +246,8 @@ public class RushingTrap : MonoBehaviour
         if (ProgressionManager.Instance != null)
             speedMultiplier = ProgressionManager.Instance.TrapSpeedMultiplier;
 
-        desiredVelocity = direction * (baseReturnSpeed * speedMultiplier);
+        // Dönüş hızı saldırı hızından biraz daha az etkilensin (oyuncu kaçabilsin)
+        desiredVelocity = direction * (baseReturnSpeed * (1f + (speedMultiplier - 1f) * 0.5f));
 
         if (Vector2.Distance(transform.position, targetPos) < 0.1f)
         {
@@ -261,7 +262,10 @@ public class RushingTrap : MonoBehaviour
     private void StartCooldown()
     {
         currentState = TrapState.Cooldown;
-        stateTimer = cooldownTime;
+        
+        // Hiz arttikca bekleme suresi azalir. Ornek: 1.5x hiz -> %33 daha az bekleme
+        float speedMultiplier = (ProgressionManager.Instance != null) ? ProgressionManager.Instance.TrapSpeedMultiplier : 1f;
+        stateTimer = cooldownTime / speedMultiplier;
 
         desiredVelocity = Vector2.zero;
     }

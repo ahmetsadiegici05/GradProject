@@ -17,6 +17,15 @@ public class Health : MonoBehaviour
     [SerializeField] private int numberOfFlashes;
     private SpriteRenderer spriteRend;
 
+    [Header("Juice / Game Feel")]
+    [SerializeField] private bool enableScreenShake = true;
+    [SerializeField] private float shakeIntensity = 0.5f;
+    [SerializeField] private float shakeDuration = 0.25f;
+    [SerializeField] private bool enableHitStop = true;
+    [SerializeField] private float hitStopDuration = 0.1f;
+
+    private CameraController camController;
+
     private void Awake()
     {
         currentHealth = startingHealth;
@@ -34,6 +43,8 @@ public class Health : MonoBehaviour
             uiManager = FindObjectOfType<UIManager>(true);
     #endif
         }
+
+        camController = FindObjectOfType<CameraController>();
     }
     public void TakeDamage(float _damage)
     {
@@ -46,11 +57,32 @@ public class Health : MonoBehaviour
 
             if (SoundManager.instance != null)
                 SoundManager.instance.PlaySound(SoundManager.instance.hurtSound);
+
+             // Juice: Shake Screen
+            if (enableScreenShake && camController != null)
+            {
+                camController.TriggerShake(shakeIntensity, shakeDuration);
+            }
+
+            // Juice: Hit Stop (Frame Freeze)
+            if (enableHitStop)
+            {
+                StartCoroutine(HitStop());
+            }
         }
         else
         {
             if (!dead)
             {
+                // Oldurucu darbede daha buyuk shake
+                if (enableScreenShake && camController != null)
+                {
+                    camController.TriggerShake(shakeIntensity * 1.5f, shakeDuration * 1.5f);
+                }
+
+                // Slow motion death effect
+                if (enableHitStop) StartCoroutine(HitStop(0.2f)); // Biraz daha uzun duraksama
+
                 if (SoundManager.instance != null)
                     SoundManager.instance.PlaySound(SoundManager.instance.deathSound);
 
@@ -61,6 +93,19 @@ public class Health : MonoBehaviour
                 if (uiManager != null)
                     uiManager.GameOver();
             }
+        }
+    }
+    
+    private IEnumerator HitStop(float durationOverride = -1f)
+    {
+        float duration = durationOverride > 0 ? durationOverride : hitStopDuration;
+        
+        if (Time.timeScale > 0)
+        {
+            float originalTimeScale = Time.timeScale;
+            Time.timeScale = 0f;
+            yield return new WaitForSecondsRealtime(duration);
+            Time.timeScale = originalTimeScale;
         }
     }
     public void AddHealth(float _value)
