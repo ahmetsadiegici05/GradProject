@@ -28,7 +28,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 23.4, y: -3.13, z: 0}
-  m_LocalScale: {x: 0.7695, y: 1, z: 1}
+  m_LocalScale: {x: 0.7574959, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -46,9 +46,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RockSpawner
   rockPrefab: {fileID: 2884322136814494520, guid: 16dd72d48ae484a47894a5a8cba0672e, type: 3}
-  maxSpawnCount: 3
-  spawnInterval: 0.2
-  spawnWidth: 10
+  maxSpawnCount: 10
+  spawnInterval: 0.1
+  spawnWidth: 6
   spawnHeight: 15
   checkCeiling: 0
   autoStart: 0
@@ -58,7 +58,9 @@ MonoBehaviour:
   ceilingLayer:
     serializedVersion: 2
     m_Bits: 128
-  oneTimeUse: 0
+  oneTimeUse: 1
+  triggerEarthquake: 1
+  earthquakeDuration: 0
 --- !u!61 &349420955690310565
 BoxCollider2D:
   m_ObjectHideFlags: 0
