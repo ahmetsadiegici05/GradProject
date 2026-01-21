@@ -17,6 +17,10 @@ public class RockSpawner : MonoBehaviour
     [SerializeField] private LayerMask ceilingLayer;
     [SerializeField] private bool oneTimeUse = true;
 
+    [Header("Earthquake Integration")]
+    [SerializeField] private bool triggerEarthquake = true;  // Deprem mekaniğini aktifleştir
+    [SerializeField] private float earthquakeDuration = 0f;  // 0 = kayalar bitene kadar
+
     private bool isActive = false;
     private Coroutine spawnCoroutine;
     private bool hasTriggeredThisStay = false;
@@ -79,6 +83,23 @@ public class RockSpawner : MonoBehaviour
     private IEnumerator SpawnRoutine()
     {
         Debug.Log($"RockSpawner: Spawn routine started. Interval: {spawnInterval}s");
+        
+        // Deprem mekaniğini başlat
+        if (triggerEarthquake)
+        {
+            if (EarthquakeManager.Instance != null)
+            {
+                // Deprem süresi: kayalar düşme süresi + ekstra 3 saniye
+                float duration = earthquakeDuration > 0 ? earthquakeDuration : (maxSpawnCount * spawnInterval) + 5f;
+                EarthquakeManager.Instance.StartEarthquake(duration);
+                Debug.Log($"[EARTHQUAKE] Started via RockSpawner! Duration: {duration}s");
+            }
+            else
+            {
+                Debug.LogWarning("[EARTHQUAKE] EarthquakeManager.Instance is NULL! Sahneye EarthquakeManager ekleyin.");
+            }
+        }
+        
         int count = 0;
         while (isActive)
         {
@@ -95,6 +116,12 @@ public class RockSpawner : MonoBehaviour
         }
         spawnCoroutine = null;
         Debug.Log("RockSpawner: Spawn routine stopped.");
+        
+        // Deprem mekaniğini durdur
+        if (triggerEarthquake && EarthquakeManager.Instance != null)
+        {
+            EarthquakeManager.Instance.StopEarthquake();
+        }
     }
 
     private void SpawnRock()

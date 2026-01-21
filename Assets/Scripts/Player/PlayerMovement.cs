@@ -24,6 +24,14 @@ public class PlayerMovement : MonoBehaviour
     private float jumpMultiplier = 1f;
     private bool wasGrounded;
 
+    // Earthquake slide
+    private float earthquakeSlideSpeed = 0f;
+    private float jumpSlideResetTimer = 0f;
+    private const float JUMP_SLIDE_RESET_DURATION = 0.5f;
+    
+    // Visual Shake
+    private Vector3 initialVisualLocalPos;
+
     // Step Sound
     private float stepTimer;
     [SerializeField] private float stepInterval = 0.35f;
@@ -73,6 +81,10 @@ public class PlayerMovement : MonoBehaviour
 
         if (visualRoot == null)
             visualRoot = transform;
+            
+        // Görselin orijinal pozisyonunu kaydet (titreme için)
+        if (visualRoot != transform)
+            initialVisualLocalPos = visualRoot.localPosition;
     }
 
     private void Update()
@@ -118,16 +130,75 @@ public class PlayerMovement : MonoBehaviour
             if (isRotatingWorld)
                 return;
 
+            // Deprem aktifse oyuncu hareketi azalt (kaymaya direnemesin)
+            bool earthquakeActive = EarthquakeManager.Instance != null && EarthquakeManager.Instance.IsEarthquakeActive;
+            
+            // Havada tam kontrol, yerde kısıtlı kontrol (%30)
+            float earthquakeMovementPenalty = (earthquakeActive && (grounded || onMovingPlatform)) ? 0.3f : 1f;
+
             // Movement - yerçekimine göre hareket
             // Time slow aktifken oyuncu normal hızda kalmak için kompansasyon uygula
-            float effectiveSpeed = speed * speedMultiplier * TimeCompensation;
+            float effectiveSpeed = speed * speedMultiplier * TimeCompensation * earthquakeMovementPenalty;
             Vector2 moveVelocity = rightDir * horizontalInput * effectiveSpeed;
             
             // Yerçekimi yönündeki hızı koru (düşme/yükselme)
             float fallSpeed = Vector2.Dot(body.linearVelocity, gravityDir);
             Vector2 fallVelocity = gravityDir * fallSpeed;
             
-            body.linearVelocity = moveVelocity + fallVelocity;
+            // Deprem kayma etkisi
+            if (earthquakeActive)
+            {
+                float slideAmount = GetEarthquakeSlideAmount(grounded || onMovingPlatform);
+                
+                // Eğer havadaysak veya slide hızı sıfırsa normal fizik uygula (Kontrol kaybı yok)
+                if (slideAmount <= 0.01f)
+                {
+                    body.linearVelocity = moveVelocity + fallVelocity;
+                }
+                else
+                {
+                    // Jitter
+                    float jitterIntensity = slideAmount * 0.2f; 
+                    float jitter = Random.Range(-jitterIntensity, jitterIntensity);
+                    
+                    // Kayma Hızı
+                    Vector2 slideVelocity = rightDir * (slideAmount + jitter);
+                    
+                    // Kademeli kontrol kaybı
+                    float speedRatio = Mathf.Clamp01((slideAmount - 5f) / 25f); 
+                    float controlPercent = Mathf.Lerp(0.5f, 0.1f, speedRatio);
+                    
+                    Vector2 suppressedInput = moveVelocity * controlPercent;
+                    
+                    Vector2 finalVelocity = suppressedInput + fallVelocity + slideVelocity;
+                    body.linearVelocity = finalVelocity;
+                    
+                    // Görsel Titreme (Visual Shake)
+                    if (visualRoot != null && visualRoot != transform)
+                    {
+                        // Hıza bağlı olarak titreşim şiddetini ayarla
+                        float shakeMagnitude = (slideAmount / 30f) * 0.15f; // Max hızda 0.15 birim kayma
+                        float shakeX = Random.Range(-shakeMagnitude, shakeMagnitude);
+                        float shakeY = Random.Range(-shakeMagnitude, shakeMagnitude);
+                        visualRoot.localPosition = initialVisualLocalPos + new Vector3(shakeX, shakeY, 0f);
+                    }
+
+                    // Debug.Log(...);
+                }
+            }
+            else
+            {
+                // Deprem bittiğinde hızı sıfırla
+                earthquakeSlideSpeed = 0f;
+                // Normal hareket
+                body.linearVelocity = moveVelocity + fallVelocity;
+
+                // Titremeyi resetle
+                if (visualRoot != null && visualRoot != transform)
+                {
+                    visualRoot.localPosition = initialVisualLocalPos;
+                }
+            }
 
             // Step Sound Logic
             if ((groundedForAnim) && Mathf.Abs(horizontalInput) > 0.01f)
@@ -189,6 +260,9 @@ public class PlayerMovement : MonoBehaviour
 
         if (grounded)
         {
+            // Deprem kaymasını resetle
+            ResetEarthquakeSlide();
+            
             // Mevcut yatay hızı koru, yukarı doğru zıpla
             float horizontalSpeed = Vector2.Dot(body.linearVelocity, rightDir);
             body.linearVelocity = rightDir * horizontalSpeed + upDir * effectiveJumpPower;
@@ -199,6 +273,9 @@ public class PlayerMovement : MonoBehaviour
         }
         else if (touchingWall && !grounded)
         {
+            // Deprem kaymasını resetle
+            ResetEarthquakeSlide();
+            
             float direction = -Mathf.Sign(transform.localScale.x);
             // Wall jump: yatay hareket kompansasyonu, dikey minimal
             body.linearVelocity = rightDir * direction * 6f * TimeCompensation + upDir * effectiveJumpPower;
@@ -339,5 +416,54 @@ public class PlayerMovement : MonoBehaviour
     {
         speedMultiplier = Mathf.Max(0.1f, newSpeedMultiplier);
         jumpMultiplier = Mathf.Max(0.1f, newJumpMultiplier);
+    }
+
+    /// <summary>
+    /// Deprem sırasında kayma miktarını hesaplar (birim/saniye)
+    /// </summary>
+    private float GetEarthquakeSlideAmount(bool isGrounded)
+    {
+        // Time Slow aktifse kayma yok
+        if (TimeSlowAbility.Instance != null && TimeSlowAbility.Instance.IsSlowMotionActive)
+        {
+            earthquakeSlideSpeed = 0f;
+            return 0f;
+        }
+
+        // Zıplama reset timer'ı kontrol et
+        if (jumpSlideResetTimer > 0f)
+        {
+            jumpSlideResetTimer -= Time.deltaTime;
+            earthquakeSlideSpeed = 0f;
+            return 0f;
+        }
+
+        // Kayma hızı parametreleri - KULLANICI İSTEĞİ (Max 30, Havada Yok)
+        float maxSlideSpeed = 30f;       // Max 30
+        float slideAcceleration = 15f;   
+        float startSpeed = 10f;          
+        
+        if (earthquakeSlideSpeed < startSpeed)
+            earthquakeSlideSpeed = startSpeed;
+            
+        earthquakeSlideSpeed = Mathf.MoveTowards(earthquakeSlideSpeed, maxSlideSpeed, slideAcceleration * Time.deltaTime);
+
+        // Zıplarsa etki etmesin (Havada 0)
+        if (!isGrounded)
+            return 0f;
+
+        return earthquakeSlideSpeed;
+    }
+
+    /// <summary>
+    /// Zıplama yapıldığında kayma reset timer'ı başlat (Jump metodundan çağrılır)
+    /// </summary>
+    private void ResetEarthquakeSlide()
+    {
+        if (EarthquakeManager.Instance != null && EarthquakeManager.Instance.IsEarthquakeActive)
+        {
+            jumpSlideResetTimer = JUMP_SLIDE_RESET_DURATION;
+            earthquakeSlideSpeed = 0f;
+        }
     }
 }
